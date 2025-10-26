@@ -2,15 +2,17 @@
 
 A GNOME Shell extension that tracks and displays your monthly logtime for 42 School (Intra42). Shows real-time progress towards your monthly hour requirements with visual status indicators.
 
+## Screenshots
+
+![Preview](screenshots/preview.gif)
+
 ## Installation
 
 ### Automated Installation
 
 ```
 git clone https://github.com/SaruM4N3/LogtimeWidget.git
-
 cd LogtimeWidget
-
 ./install.sh
 ```
 
@@ -33,6 +35,31 @@ Restart GNOME Shell
 X11: Press Alt+F2, type 'r', press Enter
 Wayland: Log out and log back in
 
+## Usage
+
+### First Time Setup
+
+1. Click on the extension in the top panel
+2. Brave browser will open automatically
+3. Log in to your Intra42 account
+4. Once logged in, the browser will close and your logtime will appear
+
+### Menu Options
+
+- **Refresh Manually**: Force an immediate data refresh
+- **Set Bonus Days**: Add bonus days to your monthly calculation
+- **Set Gift Days**: Add gift days (exclusions) to your calculation
+- **Restart Widget**: Restart the extension
+- **Quit Widget**: Disable the extension
+
+### Configuration
+
+The extension stores your session cookie securely in:
+~/.local/share/gnome-shell/extensions/LogtimeWidget@zsonie/intra42_cookies.json
+
+Bonus and gift days are stored in:
+~/.local/share/gnome-shell/extensions/LogtimeWidget@zsonie/storage.json
+
 ## Features
 
 - **Real-time Logtime Tracking**: Displays current monthly hours directly in your GNOME top panel
@@ -43,14 +70,6 @@ Wayland: Log out and log back in
 - **Automatic Cookie Authentication**: Secure login via Brave browser with automatic session management
 - **Auto-refresh**: Periodic updates every 60 seconds
 - **Manual Refresh**: Force refresh anytime from the dropdown menu
-
-## Screenshots
-
-![Extension in Panel (no money)](screenshots/poor.png)
-![Extension in Panel (get money)](screenshots/rich.png)
-
-
-![Dropdown Menu](screenshots/menu.png)
 
 ## Requirements
 
@@ -69,31 +88,6 @@ Wayland: Log out and log back in
 - `selenium` - Python Selenium library
 - `psutil` - Python process utilities
 
-## Usage
-
-### First Time Setup
-
-1. Click on the extension in the top panel
-2. Click "Login" from the dropdown menu
-3. Brave browser will open automatically
-4. Log in to your Intra42 account
-5. Once logged in, the browser will close and your logtime will appear
-
-### Menu Options
-
-- **Refresh Manually**: Force an immediate data refresh
-- **Set Bonus Days**: Add bonus days to your monthly calculation
-- **Set Gift Days**: Add gift days (exclusions) to your calculation
-- **Restart Widget**: Restart the extension
-- **Quit Widget**: Disable the extension
-
-### Configuration
-
-The extension stores your session cookie securely in:
-~/.local/share/gnome-shell/extensions/LogtimeWidget@zsonie/intra42_cookies.json
-
-Bonus and gift days are stored in:
-~/.local/share/gnome-shell/extensions/LogtimeWidget@zsonie/storage.json
 
 ## Development
 
