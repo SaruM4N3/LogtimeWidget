@@ -72,5 +72,7 @@ echo ""
 echo -e "${GREEN}The extension should now appear in your top panel!\n${NC}"
 echo -e "${YELLOW}If not you should go to extension and enable it!${NC}"
 echo -e "${YELLOW}or simply execute: gnome-extensions enable "$EXTENSION_UUID"${NC}"
-gnome-extensions enable "$EXTENSION_UUID"
+
 killall -3 gnome-shell
+sleep 1
+gnome-extensions enable "$EXTENSION_UUID"
