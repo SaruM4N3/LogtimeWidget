@@ -6,9 +6,13 @@ A GNOME Shell extension that tracks and displays your monthly logtime for 42 Sch
 
 ### Automated Installation
 
+```
 git clone https://github.com/SaruM4N3/LogtimeWidget.git
+
 cd LogtimeWidget
+
 ./install.sh
+```
 
 ### Manual Installation
 
