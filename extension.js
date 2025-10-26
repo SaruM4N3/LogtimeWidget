@@ -1,13 +1,3 @@
-//OK c'est la merde, vas falloir scraper la page pour recuperer 
-// 
-// dans le devtool network
-// locations_stats.json qui est la table json avec les infos de logtime
-// :path contient le path avec le login du user 
-// dans cookie il faut recup
-// _intra_42_session_production=77f02205258092e312c2c31b66f9ab88
-
-
-// IMPORTS
 const Clutter = imports.gi.Clutter;
 const ExtensionUtils = imports.misc.extensionUtils;
 const Gio = imports.gi.Gio;
@@ -29,7 +19,6 @@ const { _Storage } = Me.imports.storage;
 
 // DEBUGS
 const AppName = '[LogtimeWidget]';
-const errmsg = '[ERROR]';
 
 // CONST VAR
 const username = GLib.get_user_name();
@@ -230,7 +219,7 @@ class LogWidget {
     }
 
     _manualRefresh() {
-        Debug.logDebug(`${AppName} Menu: refresh selected`);
+        Debug.logDebug(`Menu: refresh selected`);
         let current_time = GLib.DateTime.new_now_local();
         this._label.set_text(`Manual refresh at ${current_time.format("%H:%M:%S")}`);
 

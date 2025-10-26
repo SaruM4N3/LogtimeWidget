@@ -1,7 +1,5 @@
 /* calculation.js
-
-utils for calculation and time parsing
-
+* utils for calculation and time parsing
 */
 
 const GLib = imports.gi.GLib;
