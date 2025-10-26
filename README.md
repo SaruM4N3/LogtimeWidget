@@ -48,8 +48,6 @@ chmod +x install.sh
 Run the installer
 ./install.sh
 
-text
-
 The installer will:
 1. Check for required dependencies
 2. Install Python packages (selenium, psutil)
@@ -74,7 +72,6 @@ gnome-extensions enable LogtimeWidget@zsonie
 Restart GNOME Shell
 X11: Press Alt+F2, type 'r', press Enter
 Wayland: Log out and log back in
-text
 
 ## Usage
 
@@ -99,31 +96,36 @@ text
 The extension stores your session cookie securely in:
 ~/.local/share/gnome-shell/extensions/LogtimeWidget@zsonie/intra42_cookies.json
 
-text
-
 Bonus and gift days are stored in:
 ~/.local/share/gnome-shell/extensions/LogtimeWidget@zsonie/storage.json
-
-text
 
 ## Development
 
 ### File Structure
 
 LogtimeWidget@zsonie/
-├── extension.js # Main extension code
-├── metadata.json # Extension metadata
-├── stylesheet.css # Extension styling
-├── capture_cookies.py # Cookie capture script
-├── data.js # API data fetching
-├── calculation.js # Logtime calculations
-├── connect.js # OAuth connection handler
-├── storage.js # Local storage management
-├── debug.js # Debug logging utilities
-├── install.sh # Installation script
-└── README.md # This file
 
-text
+├── extension.js # Main extension code
+
+├── metadata.json # Extension metadata
+
+├── stylesheet.css # Extension styling
+
+├── capture_cookies.py # Cookie capture script
+
+├── data.js # API data fetching
+
+├── calculation.js # Logtime calculations
+
+├── connect.js # OAuth connection handler
+
+├── storage.js # Local storage management
+
+├── debug.js # Debug logging utilities
+
+├── install.sh # Installation script
+
+└── README.md # This file
 
 ### Debugging
 
@@ -132,12 +134,9 @@ Real-time log monitoring
 journalctl -f -o cat /usr/bin/gnome-shell
 
 Or use Looking Glass (Alt+F2, type 'lg')
-text
 
 Cookie capture logs are written to:
 ~/.local/share/gnome-shell/extensions/LogtimeWidget@zsonie/cookie_capture.log
-
-text
 
 ### Building from Source
 
@@ -155,8 +154,6 @@ gnome-extensions list --enabled | grep LogtimeWidget
 
 Enable manually if needed
 gnome-extensions enable LogtimeWidget@zsonie
-
-text
 
 ### Login window doesn't close automatically
 
@@ -179,7 +176,6 @@ sudo pacman -S chromedriver
 Or install matching version manually
 Check your Brave version: brave --version
 Download matching ChromeDriver from https://chromedriver.chromium.org/
-text
 
 ## Uninstallation
 
@@ -190,8 +186,6 @@ chmod +x uninstall.sh
 Or manually
 gnome-extensions disable LogtimeWidget@zsonie
 rm -rf ~/.local/share/gnome-shell/extensions/LogtimeWidget@zsonie
-
-text
 
 ## Privacy & Security
 
