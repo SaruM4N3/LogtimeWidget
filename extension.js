@@ -41,11 +41,10 @@ class LogWidget {
         //Setup
         Debug.logInfo(`enable called`);
         this._setupApp();
-
-        //Choose a method
-        this._scrapMethod();
-        // this.apiMethod();
+        //Automatically trigger login on launch
+        this._onLoginClicked();
     }
+
 
     disable() {
         if (this._refreshTimeoutId) {
