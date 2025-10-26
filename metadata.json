@@ -1,0 +1,8 @@
+{
+  "uuid": "LogtimeWidget@zsonie",
+  "name": "Logtime Widget",
+  "description": "A simple widget to check your current logtime for the month.",
+  "shell-version": ["42"],
+  "stylesheet": "stylesheet.css",
+  "version": 1
+}
