@@ -117,13 +117,6 @@ function scrapedPeriodicRefresh(label,session_cookie, intervalSeconds, getBonusD
                     // Update text
                     label.set_text(result.text);
 
-                    // Update color based on status
-                    if (result.isOnTrack) {
-                        label.set_style('color: #4ade80; font-weight: 600;'); // Green
-                    } else {
-                        label.set_style('color: #ef4444; font-weight: 600;'); // Red
-                    }
-
                     let current_time = GLib.DateTime.new_now_local();
                     Debug.logInfo(`[${current_time.format("%T")}] Refreshed: ${result.text} (${result.isOnTrack ? 'ON TRACK' : 'BEHIND'})`);
                 } catch (e) {

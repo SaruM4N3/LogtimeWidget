@@ -76,7 +76,7 @@ class LogWidget {
         this._label = new St.Label({
             text: 'Wait for login...',
             y_align: St.Align.MIDDLE,
-            style_class: 'logtime-label',
+            // style_class: 'logtime-label',
         });
 
         this._box.add_child(this._label);
@@ -138,7 +138,7 @@ class LogWidget {
         let countLabel = new St.Label({
             text: String(this.bonusDays),
             style: 'font-size: 14px; font-weight: bold; text-align: center; padding: 0 8px;',
-            y_align: Clutter.ActorAlign.CENTER,  // THIS IS KEY
+            y_align: Clutter.ActorAlign.CENTER,
             x_align: Clutter.ActorAlign.CENTER,
         });
 
@@ -193,7 +193,7 @@ class LogWidget {
         let countLabel = new St.Label({
             text: String(this.giftDays),
             style: 'font-size: 14px; font-weight: bold; text-align: center; padding: 0 8px;',
-            y_align: Clutter.ActorAlign.CENTER,  // THIS IS KEY
+            y_align: Clutter.ActorAlign.CENTER,
             x_align: Clutter.ActorAlign.CENTER,
         });
 
@@ -224,7 +224,6 @@ class LogWidget {
 
         setTimeout(() => {
             this._scrapMethod();
-            //this._apiMethod();
         }, 1000);
     }
 
@@ -256,10 +255,9 @@ class LogWidget {
         });
     }
 
-    async _onLoginClicked() {
+    _onLoginClicked() {
         Debug.logInfo('Login button clicked');
 
-        // Check if cookie file already exists and is valid
         const cookieFile = Gio.File.new_for_path(
             GLib.build_filenamev([
                 GLib.get_home_dir(),
@@ -274,43 +272,42 @@ class LogWidget {
                 if (success) {
                     const cookieValue = ByteArray.toString(contents).trim();
 
-                    // Test if cookie is still valid by making a request
-                    const testUrl = `https://profile.intra.42.fr/users/${username}/locations_stats.json`;
+                    if (cookieValue.length === 0) {
+                        Debug.logInfo('Cookie file empty, need login');
+                        this._executeCookieCapture();
+                        return;
+                    }
+
+                    // Test cookie validity using the CORRECT URL
+                    const testUrl = `https://translate.intra.42.fr/users/${username}/locations_stats.json`;
                     let session = new Soup.Session();
                     let message = Soup.Message.new('GET', testUrl);
                     message.request_headers.append('Cookie', `_intra_42_session_production=${cookieValue}`);
 
-                    session.send_async(message, null, (session, result) => {
-                        try {
-                            let response = session.send_finish(result);
-                            if (message.status_code === 200) {
-                                // Cookie is valid
-                                Debug.logSuccess('Cookie is still valid');
-                                this._intra42Cookie = cookieValue;
-                                this._label.set_text('✓ Logged In');
-                                this._label.set_style('color: #10b981; font-weight: 600;');
-                                this._scrapMethod();
-                                return;
-                            } else {
-                                // Cookie invalid, need new login
-                                Debug.logInfo('Cookie expired, opening login window');
-                                this._executeCookieCapture();
-                            }
-                        } catch (e) {
-                            Debug.logError(`Cookie validation failed: ${e}`);
+                    session.queue_message(message, (sess, msg) => {
+                        if (msg.status_code === 200) {
+                            Debug.logSuccess('Cookie valid, using existing session');
+                            this._intra42Cookie = cookieValue;
+                            this._label.set_text('✓ Logged In');
+                            this._scrapMethod();
+                        } else {
+                            Debug.logInfo(`Cookie expired (status ${msg.status_code}), need new login`);
                             this._executeCookieCapture();
                         }
                     });
                     return;
                 }
             } catch (e) {
-                Debug.logError(`Error reading cookie: ${e}`);
+                Debug.logError(`Cookie read error: ${e}, opening login`);
+                this._executeCookieCapture();
+                return;
             }
         }
 
-        // No cookie file or couldn't read it, start login flow
+        Debug.logInfo('No cookie file found, need login');
         this._executeCookieCapture();
     }
+
 
     _executeCookieCapture() {
         Debug.logInfo('Starting cookie capture...');
@@ -460,6 +457,7 @@ class LogWidget {
         if (this._refreshTimeoutId) {
             GLib.source_remove(this._refreshTimeoutId);
         }
+
         this._refreshTimeoutId = Data.scrapedPeriodicRefresh(
             this._label,
             this._intra42Cookie,
@@ -469,28 +467,53 @@ class LogWidget {
             (data) => {
                 this._cachedData = data;
                 Debug.logInfo('Data cached for instant updates');
+                this._updateLogtime();
             }
         );
     }
 
     _updateLogtime() {
         if (!this._cachedData) {
-            Debug.logWarn('No cached data yet, will update on next refresh');
+            Debug.logWarn("No cached data yet, will update on next refresh...");
             return;
         }
 
         let result = Calculation.calculateMonthlyTotal(this._cachedData, this.bonusDays || 0, this.giftDays || 0);
         this._label.set_text(result.text);
 
-        // Update color
-        if (result.isOnTrack) {
-            this._label.set_style('color: #4ade80; font-weight: 600;'); // Green
+        // Calculate gradient color from red (0h) to green (maxhours)
+        let percentage = Math.min(1.0, Math.max(0.0, result.totalHours / result.workingHours));
+        let color = this._interpolateColor(percentage);
+
+        this._label.set_style(`color: ${color}; font-weight: 600;`);
+        Debug.logSuccess(`Updated with bonus:${this.bonusDays}, gift:${this.giftDays} => ${result.text}`);
+    }
+
+    _interpolateColor(percentage) {
+        let toHex = (n) => {
+            let hex = Math.round(n).toString(16);
+            return hex.length === 1 ? '0' + hex : hex;
+        };
+
+        let r, g, b;
+
+        if (percentage < 1.0) {
+            // Red to Green: 0% to 100%
+            let easedPercentage = percentage ** 2.5;
+
+            r = 239 + (74 - 239) * easedPercentage;
+            g = 68 + (222 - 68) * easedPercentage;
+            b = 68 + (128 - 68) * easedPercentage;
         } else {
-            this._label.set_style('color: #ef4444; font-weight: 600;'); // Red
+            r = 0;
+            g = 200;
+            b = 255;
         }
 
-        Debug.logSuccess(`Updated with bonus=${this.bonusDays}, gift=${this.giftDays}: ${result.text}`);
+        return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
     }
+
+
 }
 
 function init() {
