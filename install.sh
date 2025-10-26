@@ -22,7 +22,7 @@ EXTENSION_DIR="$HOME/.local/share/gnome-shell/extensions/$EXTENSION_UUID"
 
 # Check if running on GNOME
 if [ "$XDG_CURRENT_DESKTOP" != "GNOME" ]; then
-    echo -e "${YELLOW}Warning: This script is designed for GNOME Shell${NC}"
+    echo -e "${YELLOW}Warning: This script is designed for GNOME Shell \n${GREEN}(42Lyon sessions are running on GNOME, just press y)${NC}"
     read -p "Continue anyway? (y/N): " -n 1 -r
     echo
     if [[ ! $REPLY =~ ^[Yy]$ ]]; then
@@ -69,5 +69,8 @@ echo -e "${GREEN}========================================${NC}"
 echo -e "${GREEN}  Installation Complete!${NC}"
 echo -e "${GREEN}========================================${NC}"
 echo ""
-echo -e "${GREEN}The extension should now appear in your top panel!${NC}"
+echo -e "${GREEN}The extension should now appear in your top panel!\n${NC}"
+echo -e "${YELLOW}If not you should go to extension and enable it!${NC}"
+echo -e "${YELLOW}or simply execute: gnome-extensions enable "$EXTENSION_UUID"${NC}"
+gnome-extensions enable "$EXTENSION_UUID"
 killall -3 gnome-shell

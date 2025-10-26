@@ -21,7 +21,8 @@ function get_scraped_data(session_cookie, callback) {
         if (msg.status_code === 200) {
             try {
                 let data = JSON.parse(msg.response_body.data);
-                Debug.logSuccess("[Scrape] Got live data:\n" + JSON.stringify(data, null, 2));
+                // Commented to avoid flood in journalctl (to uncomment in case you want to check JSON data)
+                // Debug.logSuccess("[Scrape] Got live data:\n" + JSON.stringify(data, null, 2));
                 callback(data);
             } catch (e) {
                 Debug.logError("[Scrape] Parse error: " + e.message);

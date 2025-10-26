@@ -45,7 +45,6 @@ class LogWidget {
         this._onLoginClicked();
     }
 
-
     disable() {
         if (this._refreshTimeoutId) {
             GLib.source_remove(this._refreshTimeoutId);
@@ -59,7 +58,6 @@ class LogWidget {
     }
 
     _setupApp() {
-
         this._indicator = new PanelMenu.Button(0.0, Me.metadata.name, false);
 
         this._box = new St.BoxLayout({
@@ -76,7 +74,6 @@ class LogWidget {
         this._label = new St.Label({
             text: 'Wait for login...',
             y_align: St.Align.MIDDLE,
-            // style_class: 'logtime-label',
         });
 
         this._box.add_child(this._label);
@@ -85,9 +82,8 @@ class LogWidget {
 
         this._setupMenuItems();
     }
+
     _setupMenuItems() {
-
-
         this._refreshItem = this._createMenuItem('Refresh Manually', () => this._manualRefresh());
         this._restartItem = this._createMenuItem('Restart widget', () => this._restartWidget());
         this._loginItem = this._createMenuItem('Login', () => this._onLoginClicked());
@@ -308,7 +304,6 @@ class LogWidget {
         this._executeCookieCapture();
     }
 
-
     _executeCookieCapture() {
         Debug.logInfo('Starting cookie capture...');
 
@@ -404,7 +399,6 @@ class LogWidget {
             return true; // Continue interval
         });
     }
-
 
     _restartWidget() {
         Debug.logDebug(`Restarting widget…`);
@@ -512,8 +506,6 @@ class LogWidget {
 
         return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
     }
-
-
 }
 
 function init() {

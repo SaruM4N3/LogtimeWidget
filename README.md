@@ -2,6 +2,33 @@
 
 A GNOME Shell extension that tracks and displays your monthly logtime for 42 School (Intra42). Shows real-time progress towards your monthly hour requirements with visual status indicators.
 
+## Installation
+
+### Automated Installation
+
+git clone https://github.com/SaruM4N3/LogtimeWidget.git
+cd LogtimeWidget
+./install.sh
+
+### Manual Installation
+
+Install system dependencies (Arch Linux)
+sudo pacman -S python python-pip brave chromedriver
+
+Install Python dependencies
+pip3 install --user selenium psutil
+
+Copy extension files
+mkdir -p ~/.local/share/gnome-shell/extensions/LogtimeWidget@zsonie
+cp -r * ~/.local/share/gnome-shell/extensions/LogtimeWidget@zsonie/
+
+Enable the extension
+gnome-extensions enable LogtimeWidget@zsonie
+
+Restart GNOME Shell
+X11: Press Alt+F2, type 'r', press Enter
+Wayland: Log out and log back in
+
 ## Features
 
 - **Real-time Logtime Tracking**: Displays current monthly hours directly in your GNOME top panel
@@ -37,44 +64,6 @@ A GNOME Shell extension that tracks and displays your monthly logtime for 42 Sch
 - `chromedriver` - Selenium WebDriver for Chrome/Brave
 - `selenium` - Python Selenium library
 - `psutil` - Python process utilities
-
-## Installation
-
-### Automated Installation
-
-Clone or download the extension
-cd LogtimeWidget@zsonie
-
-Make the installer executable
-chmod +x install.sh
-
-Run the installer
-./install.sh
-
-The installer will:
-1. Check for required dependencies
-2. Install Python packages (selenium, psutil)
-3. Copy extension files to `~/.local/share/gnome-shell/extensions/`
-4. Enable the extension
-
-### Manual Installation
-
-Install system dependencies (Arch Linux)
-sudo pacman -S python python-pip brave chromedriver
-
-Install Python dependencies
-pip3 install --user selenium psutil
-
-Copy extension files
-mkdir -p ~/.local/share/gnome-shell/extensions/LogtimeWidget@zsonie
-cp -r * ~/.local/share/gnome-shell/extensions/LogtimeWidget@zsonie/
-
-Enable the extension
-gnome-extensions enable LogtimeWidget@zsonie
-
-Restart GNOME Shell
-X11: Press Alt+F2, type 'r', press Enter
-Wayland: Log out and log back in
 
 ## Usage
 
