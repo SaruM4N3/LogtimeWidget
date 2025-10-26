@@ -17,6 +17,8 @@ A GNOME Shell extension that tracks and displays your monthly logtime for 42 Sch
 
 ![Extension in Panel (no money)](screenshots/poor.png)
 ![Extension in Panel (get money)](screenshots/rich.png)
+
+
 ![Dropdown Menu](screenshots/menu.png)
 
 ## Requirements
