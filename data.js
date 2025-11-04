@@ -164,6 +164,7 @@ function scrapedPeriodicRefresh(label, session_cookie, intervalSeconds, getBonus
 }
 
 var Data = {
+	deleteCookiesFile,
 	get_scraped_data,
 	get_api_data,
 	startPeriodicRefresh,
