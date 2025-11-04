@@ -3,6 +3,7 @@ utils for data
 */
 
 const GLib = imports.gi.GLib;
+const Gio = imports.gi.Gio;
 const ExtensionUtils = imports.misc.extensionUtils;
 const Me = ExtensionUtils.getCurrentExtension();
 const Soup = imports.gi.Soup;
