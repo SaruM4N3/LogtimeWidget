@@ -11,14 +11,15 @@ const Soup = imports.gi.Soup;
 const St = imports.gi.St;
 const ByteArray = imports.byteArray;
 
-const { Calculation } = Me.imports.calculation;
-const { Connect } = Me.imports.connect;
-const { Data } = Me.imports.data;
-const { Debug } = Me.imports.debug;
-const { _Storage } = Me.imports.storage;
+const { Connect } = Me.imports.connect.connect;
+const { Data } = Me.imports.data.data;
+const { Storage } = Me.imports.data.storage;
+const { Calculation } = Me.imports.utils.calculation;
+const { Settings } = Me.imports.utils.settings;
+const { Debug } = Me.imports.utils.debug;
 
 // DEBUGS
-const AppName = '[LogtimeWidget]';
+const AppName = '[LogtimeWidget2]';
 
 // CONST VAR
 const username = GLib.get_user_name();
@@ -27,25 +28,34 @@ const username = GLib.get_user_name();
 
 class LogWidget {
 	constructor() {
-		let saved = _Storage.loadDays();
+		let saved = Storage.loadDays();
 		this.bonusDays = saved.bonusDays;
 		this.giftDays = saved.giftDays;
+		this.showMinutes = saved.showMinutes !== undefined ? saved.showMinutes : true;
+		this.displayFormat = saved.displayFormat || 'ratio';
+		this.startColor = saved.startColor || '#ef4444';
+		this.endColor = saved.endColor || '#4ade80';
+		this.aheadColor = saved.aheadColor || '#00c8ff';
 		this._refreshTimeoutId = null;
 		this._cachedData = null;
 		this._testData = null;
-
-		Debug.logInfo(`Loaded from storage: bonus=${this.bonusDays}, gift=${this.giftDays}`);
+		this._fileMonitor = null;
+		Debug.logInfo(`Loaded from storage: bonus=${this.bonusDays}, gift=${this.giftDays}, colors=[${this.startColor},${this.endColor},${this.aheadColor}]`);
 	}
 
 	enable() {
-		//Setup
 		Debug.logInfo(`enable called`);
 		this._setupApp();
-		//Automatically trigger login on launch
-		this._onLoginClicked();
+		this._setupStorageMonitoring();
+		this._validateAndLoginIfNeeded();
 	}
 
 	disable() {
+		if (this._fileMonitor) {
+			this._fileMonitor.cancel();
+			this._fileMonitor = null;
+		}
+
 		if (this._refreshTimeoutId) {
 			GLib.source_remove(this._refreshTimeoutId);
 			this._refreshTimeoutId = null;
@@ -86,21 +96,30 @@ class LogWidget {
 	_setupMenuItems() {
 		this._refreshItem = this._createMenuItem('Refresh Manually', () => this._manualRefresh());
 		this._restartItem = this._createMenuItem('Restart widget', () => this._restartWidget());
-		this._loginItem = this._createMenuItem('Login', () => this._onLoginClicked());
-		this._quitItem = this._createMenuItem('Quit widget', () => this._quitWidget());
+		this._loginItem = this._createMenuItem('Force Login Manually', () => this._onLoginClicked());
+		this._settingsItem = this._createMenuItem('Settings', () => this._openSettings());
 		this._indicator.menu.addMenuItem(this._refreshItem);
+		this._indicator.menu.addMenuItem(this._loginItem);
+		this._indicator.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
 		this._setupBonusDaySubmenu();
 		this._setupGiftDaySubmenu();
 		this._indicator.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
-		this._indicator.menu.addMenuItem(this._loginItem);
 		this._indicator.menu.addMenuItem(this._restartItem);
-		this._indicator.menu.addMenuItem(this._quitItem);
+		this._indicator.menu.addMenuItem(this._settingsItem);
 	}
 
 	_createMenuItem(label, callback) {
 		let item = new PopupMenu.PopupMenuItem(label);
 		item.connect('activate', callback);
 		return item;
+	}
+
+	_setupStorageMonitoring() {
+		// Import Settings module
+		const { Settings } = Me.imports.utils.settings;
+
+		// Setup monitoring and store the monitor
+		this._fileMonitor = Settings.setupStorageMonitoring(this);
 	}
 
 	_setupBonusDaySubmenu() {
@@ -124,7 +143,15 @@ class LogWidget {
 			if (this.bonusDays > 0) {
 				this.bonusDays--;
 				countLabel.set_text(String(this.bonusDays));
-				_Storage.saveDays(this.bonusDays, this.giftDays);
+				Storage.saveDays(
+					this.bonusDays,
+					this.giftDays,
+					this.showMinutes,
+					this.displayFormat,
+					this.startColor,
+					this.endColor,
+					this.aheadColor
+				);
 				Debug.logInfo(`Bonus days: ${this.bonusDays}`);
 				this._updateLogtime();
 			}
@@ -146,7 +173,7 @@ class LogWidget {
 		plusBtn.connect('clicked', () => {
 			this.bonusDays++;
 			countLabel.set_text(String(this.bonusDays));
-			_Storage.saveDays(this.bonusDays, this.giftDays);
+			Storage.saveDays(this.bonusDays, this.giftDays);
 			Debug.logInfo(`Bonus days: ${this.bonusDays}`);
 			this._updateLogtime();
 		});
@@ -179,7 +206,15 @@ class LogWidget {
 			if (this.giftDays > 0) {
 				this.giftDays--;
 				countLabel.set_text(String(this.giftDays));
-				_Storage.saveDays(this.bonusDays, this.giftDays);
+				Storage.saveDays(
+					this.bonusDays,
+					this.giftDays,
+					this.showMinutes,
+					this.displayFormat,
+					this.startColor,
+					this.endColor,
+					this.aheadColor
+				);
 				Debug.logInfo(`Gift days: ${this.giftDays}`);
 				this._updateLogtime();
 			}
@@ -201,7 +236,7 @@ class LogWidget {
 		plusBtn.connect('clicked', () => {
 			this.giftDays++;
 			countLabel.set_text(String(this.giftDays));
-			_Storage.saveDays(this.bonusDays, this.giftDays);
+			Storage.saveDays(this.bonusDays, this.giftDays, this.showMinutes, this.displayFormat);
 			Debug.logInfo(`Gift days: ${this.giftDays}`);
 			this._updateLogtime();
 		});
@@ -251,59 +286,81 @@ class LogWidget {
 		});
 	}
 
-	_onLoginClicked() {
-		Debug.logInfo('Login button clicked');
+	_validateAndLoginIfNeeded() {
+		Debug.logInfo('Checking for existing valid cookie...');
 
 		const cookieFile = Gio.File.new_for_path(
 			GLib.build_filenamev([
 				GLib.get_home_dir(),
 				'.local/share/gnome-shell/extensions/LogtimeWidget@zsonie',
-				'intra42_cookies.json'
+				'utils/intra42_cookies.json'
 			])
 		);
 
-		if (cookieFile.query_exists(null)) {
-			try {
-				let [success, contents] = cookieFile.load_contents(null);
-				if (success) {
-					const cookieValue = ByteArray.toString(contents).trim();
+		// No cookie file exists - need to login
+		if (!cookieFile.query_exists(null)) {
+			Debug.logInfo('No cookie file found, opening login');
+			this._executeCookieCapture();
+			return;
+		}
 
-					if (cookieValue.length === 0) {
-						Debug.logInfo('Cookie file empty, need login');
-						this._executeCookieCapture();
-						return;
-					}
-
-					// Test cookie validity using the CORRECT URL
-					const testUrl = `https://translate.intra.42.fr/users/${username}/locations_stats.json`;
-					let session = new Soup.Session();
-					let message = Soup.Message.new('GET', testUrl);
-					message.request_headers.append('Cookie', `_intra_42_session_production=${cookieValue}`);
-					session.queue_message(message, (sess, msg) => {
-						if (msg.status_code === 200) {
-							Debug.logSuccess('Cookie valid, using existing session');
-							this._intra42Cookie = cookieValue;
-							this._label.set_text('✓ Cookie is valid');
-							this._scrapMethod();
-						} else {
-							Debug.logInfo(`𐄂 Cookie expired (status ${msg.status_code}), need new login`);
-							this._label.set_text('𐄂 Invalid cookie, need to login!');
-							Data.deleteCookiesFile();
-							this._executeCookieCapture();
-						}
-					});
-					return;
-				}
-			} catch (e) {
-				Debug.logError(`Cookie read error: ${e}, opening login`);
-				this._label.set_text('𐄂 Invalid cookie, need to login!');
-				Data.deleteCookiesFile();
+		// Cookie file exists - validate it
+		try {
+			let [success, contents] = cookieFile.load_contents(null);
+			if (!success || contents.length === 0) {
+				Debug.logInfo('Cookie file empty, opening login');
 				this._executeCookieCapture();
 				return;
 			}
-		}
 
-		Debug.logInfo('No cookie file found, need login');
+			const cookieValue = ByteArray.toString(contents).trim();
+
+			if (cookieValue.length === 0) {
+				Debug.logInfo('Cookie file empty, opening login');
+				this._executeCookieCapture();
+				return;
+			}
+
+			// Test cookie validity
+			this._label.set_text('Validating cookie...');
+			const testUrl = `https://translate.intra.42.fr/users/${username}/locations_stats.json`;
+			let session = new Soup.Session();
+			let message = Soup.Message.new('GET', testUrl);
+			message.request_headers.append('Cookie', `_intra_42_session_production=${cookieValue}`);
+
+			session.queue_message(message, (sess, msg) => {
+				Debug.logInfo(`Cookie validation status: ${msg.status_code}`);
+
+				if (msg.status_code === 200) {
+					// Cookie is valid - use it
+					Debug.logSuccess(`Cookie valid, using existing session`);
+					this._intra42Cookie = cookieValue;
+					this._label.set_text(`✓ Logged in`);
+					this._label.set_style('color: #10b981; font-weight: 600;');
+					this._scrapMethod();
+				} else {
+					// Cookie invalid/expired - need to login
+					Debug.logInfo(`Cookie invalid (status ${msg.status_code}), opening login`);
+					this._label.set_text('Cookie expired, logging in...');
+					this._label.set_style('color: #ef4444; font-weight: 600;');
+					Data.deleteCookiesFile();
+					this._executeCookieCapture();
+				}
+			});
+		} catch (e) {
+			Debug.logError(`Cookie read error: ${e}, opening login`);
+			this._label.set_text('Error reading cookie');
+			this._label.set_style('color: #ef4444; font-weight: 600;');
+			Data.deleteCookiesFile();
+			this._executeCookieCapture();
+		}
+	}
+
+	_onLoginClicked() {
+		// This is now ONLY called manually from the menu
+		Debug.logInfo('Manual login requested');
+		this._label.set_text('Starting login...');
+		Data.deleteCookiesFile();  // Clear old cookie
 		this._executeCookieCapture();
 	}
 
@@ -313,7 +370,7 @@ class LogWidget {
 		const scriptPath = GLib.build_filenamev([
 			GLib.get_home_dir(),
 			'.local/share/gnome-shell/extensions/LogtimeWidget@zsonie',
-			'capture_cookies.py'
+			'connect/capture_cookies.py'
 		]);
 
 		try {
@@ -363,7 +420,7 @@ class LogWidget {
 				GLib.build_filenamev([
 					GLib.get_home_dir(),
 					'.local/share/gnome-shell/extensions/LogtimeWidget@zsonie',
-					'intra42_cookies.json'
+					'utils/intra42_cookies.json'
 				])
 			);
 
@@ -417,12 +474,13 @@ class LogWidget {
 		}
 	}
 
-	_quitWidget() {
-		if (this._indicator) {
-			this._indicator.destroy();
-			this._indicator = null;
+	_openSettings() {
+		Debug.logInfo('Opening extension settings');
+		try {
+			ExtensionUtils.openPrefs();
+		} catch (e) {
+			Debug.logError(`Failed to open settings: ${e}`);
 		}
-		Debug.logDebug(`Widget destroyed`);
 	}
 
 	_apiMethod() {
@@ -475,7 +533,15 @@ class LogWidget {
 			return;
 		}
 
-		let result = Calculation.calculateMonthlyTotal(this._cachedData, this.bonusDays || 0, this.giftDays || 0);
+		// Use new formatTimeDisplay function with user preferences
+		let result = Calculation.formatTimeDisplay(
+			this._cachedData,
+			this.bonusDays || 0,
+			this.giftDays || 0,
+			this.showMinutes,
+			this.displayFormat
+		);
+
 		this._label.set_text(result.text);
 
 		// Calculate gradient color from red (0h) to green (maxhours)
@@ -483,10 +549,19 @@ class LogWidget {
 		let color = this._interpolateColor(percentage);
 
 		this._label.set_style(`color: ${color}; font-weight: 600;`);
-		Debug.logSuccess(`Updated with bonus:${this.bonusDays}, gift:${this.giftDays} => ${result.text}`);
+		Debug.logSuccess(`Updated: ${result.text} [minutes:${this.showMinutes}, format:${this.displayFormat}]`);
 	}
 
+
 	_interpolateColor(percentage) {
+		// Parse hex colors to RGB
+		let parseHex = (hex) => {
+			let r = parseInt(hex.slice(1, 3), 16);
+			let g = parseInt(hex.slice(3, 5), 16);
+			let b = parseInt(hex.slice(5, 7), 16);
+			return { r, g, b };
+		};
+
 		let toHex = (n) => {
 			let hex = Math.round(n).toString(16);
 			return hex.length === 1 ? '0' + hex : hex;
@@ -495,20 +570,26 @@ class LogWidget {
 		let r, g, b;
 
 		if (percentage < 1.0) {
-			// Red to Green: 0% to 100%
+			// Gradient from startColor to endColor: 0% to 100%
+			let startRGB = parseHex(this.startColor);
+			let endRGB = parseHex(this.endColor);
+
 			let easedPercentage = percentage ** 2.5;
 
-			r = 239 + (74 - 239) * easedPercentage;
-			g = 68 + (222 - 68) * easedPercentage;
-			b = 68 + (128 - 68) * easedPercentage;
+			r = startRGB.r + (endRGB.r - startRGB.r) * easedPercentage;
+			g = startRGB.g + (endRGB.g - startRGB.g) * easedPercentage;
+			b = startRGB.b + (endRGB.b - startRGB.b) * easedPercentage;
 		} else {
-			r = 0;
-			g = 200;
-			b = 255;
+			// Use aheadColor for >100%
+			let aheadRGB = parseHex(this.aheadColor);
+			r = aheadRGB.r;
+			g = aheadRGB.g;
+			b = aheadRGB.b;
 		}
 
 		return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
 	}
+
 }
 
 function init() {

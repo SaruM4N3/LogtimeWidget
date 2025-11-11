@@ -16,14 +16,14 @@ def capture_cookies():
     output_file = os.path.join(
         os.path.expanduser("~"),
         ".local/share/gnome-shell/extensions/LogtimeWidget@zsonie",
-        "intra42_cookies.json"
+        "utils/intra42_cookies.json"
     )
     
     # Log file to debug
     log_file = os.path.join(
         os.path.expanduser("~"),
         ".local/share/gnome-shell/extensions/LogtimeWidget@zsonie",
-        "cookie_capture.log"
+        "utils/cookie_capture.log"
     )
     
     # Redirect stdout and stderr to log file

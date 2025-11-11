@@ -43,18 +43,10 @@ mkdir -p "$EXTENSION_DIR"
 
 # Copy extension files
 echo "Copying files to $EXTENSION_DIR"
-cp -f extension.js "$EXTENSION_DIR/"
-cp -f metadata.json "$EXTENSION_DIR/"
-cp -f stylesheet.css "$EXTENSION_DIR/"
-cp -f capture_cookies.py "$EXTENSION_DIR/"
-cp -f data.js "$EXTENSION_DIR/"
-cp -f calculation.js "$EXTENSION_DIR/"
-cp -f connect.js "$EXTENSION_DIR/"
-cp -f storage.js "$EXTENSION_DIR/"
-cp -f debug.js "$EXTENSION_DIR/"
+cp -rf extension/* "$EXTENSION_DIR/"
 
 # Make Python script executable
-chmod +x "$EXTENSION_DIR/capture_cookies.py"
+chmod +x "$EXTENSION_DIR/connect/capture_cookies.py"
 
 echo -e "${GREEN}✓ Extension files installed${NC}"
 

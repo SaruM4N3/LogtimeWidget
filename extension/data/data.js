@@ -7,8 +7,8 @@ const Gio = imports.gi.Gio;
 const ExtensionUtils = imports.misc.extensionUtils;
 const Me = ExtensionUtils.getCurrentExtension();
 const Soup = imports.gi.Soup;
-const { Debug } = Me.imports.debug;
-const { Calculation } = Me.imports.calculation;
+const { Debug } = Me.imports.utils.debug;
+const { Calculation } = Me.imports.utils.calculation;
 
 const user = GLib.get_user_name();
 const LIVE_JSON_ADRESS = `https://translate.intra.42.fr/users/${user}/locations_stats.json`;
@@ -132,18 +132,14 @@ function scrapedPeriodicRefresh(label, session_cookie, intervalSeconds, getBonus
 						Debug.logError('Unauthorized token');
 						return;
 					}
-
 					if (onDataReceived) {
 						onDataReceived(data);
 					}
-
 					let bonusDays = getBonusDays ? getBonusDays() : 0;
 					let giftDays = getGiftDays ? getGiftDays() : 0;
 					let result = Calculation.calculateMonthlyTotal(data, bonusDays, giftDays);
-
 					// Update text
 					label.set_text(result.text);
-
 					let current_time = GLib.DateTime.new_now_local();
 					Debug.logInfo(`[${current_time.format("%T")}] Refreshed: ${result.text} (${result.isOnTrack ? 'ON TRACK' : 'BEHIND'})`);
 				} catch (e) {

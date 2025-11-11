@@ -4,5 +4,6 @@
   "description": "A simple widget to check your {current logtime of the month}/{intended logtime of the month}.",
   "shell-version": ["42"],
   "stylesheet": "stylesheet.css",
-  "version": 1
+  "version": 1,
+  "settings-schema": "org.gnome.shell.extensions.logtimewidget"
 }

@@ -7,7 +7,7 @@ const Me = ExtensionUtils.getCurrentExtension();
 const GLib = imports.gi.GLib;
 const Soup = imports.gi.Soup;
 
-const { Debug } = Me.imports.debug;
+const { Debug } = Me.imports.utils.debug;
 
 function get_access_token(client_id, client_secret, callback) {
     let session = new Soup.Session();
@@ -39,8 +39,6 @@ function get_access_token(client_id, client_secret, callback) {
         }
     });
 }
-
-
 
 var Connect = {
     get_access_token
