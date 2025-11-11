@@ -1,6 +1,6 @@
 # Logtime Widget - GNOME Shell Extension
 
-A GNOME Shell extension that tracks and displays your monthly logtime for 42 School (Intra42). Shows real-time progress towards your monthly hour requirements with visual status indicators.
+A GNOME Shell extension that tracks and displays your monthly [translate:logtime] for [translate:42 School] ([translate:Intra42]). Shows real-time progress towards your monthly hour requirements with visual status indicators.
 
 ## Screenshots
 
@@ -18,115 +18,113 @@ cd LogtimeWidget
 
 ### Manual Installation
 
-Install system dependencies (Arch Linux)
-sudo pacman -S python python-pip brave chromedriver
-
-Install Python dependencies
-pip3 install --user selenium psutil
+Install Python dependencies  
+`pip3 install --user selenium psutil`
 
 Copy extension files
-mkdir -p ~/.local/share/gnome-shell/extensions/LogtimeWidget@zsonie
+```
+mkdir -p ~/.local/share/gnome-shell/extensions/LogtimeWidget@zsonie  
 cp -r * ~/.local/share/gnome-shell/extensions/LogtimeWidget@zsonie/
+```
 
-Enable the extension
-gnome-extensions enable LogtimeWidget@zsonie
+Enable the extension  
+`gnome-extensions enable LogtimeWidget@zsonie`
 
-Restart GNOME Shell
-X11: Press Alt+F2, type 'r', press Enter
-Wayland: Log out and log back in
+Restart GNOME Shell 
+`X11: Press Alt+F2, type 'r', press Enter  
+Wayland: Log out and log back in`
 
 ## Usage
 
 ### First Time Setup
 
-1. Click on the extension in the top panel
-2. Brave browser will open automatically
-3. Log in to your Intra42 account
-4. Once logged in, the browser will close and your logtime will appear
+1. Brave browser will open automatically  
+2. Log in to your [translate:Intra42] account  
+3. Once logged in, the browser will close and your [translate:logtime] will appear
+4. When the Cookie token will expire, the browser will automatically reopen (every 2-3 days)
 
 ### Menu Options
 
-- **Refresh Manually**: Force an immediate data refresh
-- **Set Bonus Days**: Add bonus days to your monthly calculation
-- **Set Gift Days**: Add gift days (exclusions) to your calculation
-- **Restart Widget**: Restart the extension
-- **Quit Widget**: Disable the extension
+- **Refresh Manually**: Force an immediate data refresh  
+- **Force Login Manually**: Force an immediate login  
+- **Set Bonus Days**: Add bonus days to your monthly calculation  
+- **Set Gift Days**: Add gift days (exclusions) to your calculation  
+- **Restart Widget**: Restart the extension  
+- **Settings**: Open extension settings
 
 ### Configuration
 
-The extension stores your session cookie securely in:
-~/.local/share/gnome-shell/extensions/LogtimeWidget@zsonie/intra42_cookies.json
+The extension stores your session cookie securely in:  
+`~/.local/share/gnome-shell/extensions/LogtimeWidget@zsonie/intra42_cookies.json`
 
-Bonus and gift days are stored in:
-~/.local/share/gnome-shell/extensions/LogtimeWidget@zsonie/storage.json
+Bonus and gift days are stored in:  
+`~/.local/share/gnome-shell/extensions/LogtimeWidget@zsonie/storage.json`
 
 ## Features
 
-- **Real-time Logtime Tracking**: Displays current monthly hours directly in your GNOME top panel
-- **Visual Status Indicators**: 
-  - Green: On track to meet monthly requirements
-  - Red: Behind schedule
-- **Bonus & Gift Days**: Manually add bonus days and gift days to your calculations
-- **Automatic Cookie Authentication**: Secure login via Brave browser with automatic session management
-- **Auto-refresh**: Periodic updates every 60 seconds
+- **Real-time Logtime Tracking**: Displays current monthly hours directly in your GNOME top panel  
+- **Visual Status Indicators**:  
+  - Red: from 0%  
+  - Green: to 99%  
+  - Cyan: Congrats, you are rich!  
+- **Bonus & Gift Days**: Manually add bonus days and gift days to your calculations  
+- **Automatic Cookie Authentication**: Secure login via Brave browser with automatic session management  
+- **Auto-refresh**: Periodic updates every 60 seconds  
 - **Manual Refresh**: Force refresh anytime from the dropdown menu
 
 ## Requirements
 
-- GNOME Shell 42 or later
-- Python 3.10+
-- Brave Browser
+- GNOME Shell 42 or later  
+- Python 3.10+  
+- Brave Browser  
 - ChromeDriver
-- Arch Linux (recommended)
 
 ### Dependencies
 
-- `python3` - Python runtime
-- `python-pip` - Python package manager
-- `brave` or `brave-browser` - Brave browser
-- `chromedriver` - Selenium WebDriver for Chrome/Brave
-- `selenium` - Python Selenium library
+- `python3` - Python runtime  
+- `python-pip` - Python package manager  
+- `brave` or `brave-browser` - Brave browser  
+- `chromedriver` - Selenium WebDriver for Chrome/Brave  
+- `selenium` - Python Selenium library  
 - `psutil` - Python process utilities
-
 
 ## Development
 
 ### File Structure
 
-LogtimeWidget@zsonie/
-
-├── extension.js # Main extension code
-
-├── metadata.json # Extension metadata
-
-├── stylesheet.css # Extension styling
-
-├── capture_cookies.py # Cookie capture script
-
-├── data.js # API data fetching
-
-├── calculation.js # Logtime calculations
-
-├── connect.js # OAuth connection handler
-
-├── storage.js # Local storage management
-
-├── debug.js # Debug logging utilities
-
-├── install.sh # Installation script
-
-└── README.md # This file
-
+```
+./
+├── extension/
+│   ├── connect/
+│   │   ├── capture_cookies.py
+│   │   └── connect.js
+│   ├── data/
+│   │   ├── data.js
+│   │   └── storage.js
+│   ├── extension.js
+│   ├── metadata.json
+│   ├── prefs.js
+│   ├── stylesheet.css
+│   └── utils/
+│       ├── calculation.js
+│       ├── debug.js
+│       └── settings.js
+├── install.sh
+├── README.md
+├── screenshots/
+│   └── preview.gif
+└── uninstall.sh
+```
 ### Debugging
 
-View extension logs:
-Real-time log monitoring
-journalctl -f -o cat /usr/bin/gnome-shell
+#### View extension logs:  
+Real-time log monitoring  
+`journalctl -f -o cat /usr/bin/gnome-shell`
 
 Or use Looking Glass (Alt+F2, type 'lg')
 
-Cookie capture logs are written to:
-~/.local/share/gnome-shell/extensions/LogtimeWidget@zsonie/cookie_capture.log
+Cookie capture logs are written to:  
+`~/.local/share/gnome-shell/extensions/LogtimeWidget@zsonie/utils/cookie_capture.log`
 
 ### Building from Source
 
@@ -136,66 +134,56 @@ The extension is written in JavaScript (GJS) and doesn't require compilation. Si
 
 ### Extension doesn't appear after installation
 
-Restart GNOME Shell
+Restart GNOME Shell  
 X11: Alt+F2, type 'r', Enter
-Wayland: Log out and log back in
-Check if extension is enabled
-gnome-extensions list --enabled | grep LogtimeWidget
+Check if extension is enabled  
+`gnome-extensions list --enabled | grep LogtimeWidget`
 
-Enable manually if needed
-gnome-extensions enable LogtimeWidget@zsonie
+Enable manually if needed  
+`gnome-extensions enable LogtimeWidget@zsonie`
 
 ### Login window doesn't close automatically
 
-The Brave window should close automatically after successful login. If it doesn't:
-1. Close it manually after logging in
-2. The cookie should still be captured
+The Brave window should close automatically after successful login. If it doesn't:  
+1. Close it manually after logging in  
+2. The cookie should still be captured  
 3. Check `cookie_capture.log` for errors
 
 ### "Failed to get data" error
 
-1. Click "Login" to refresh your session
-2. Check your internet connection
+1. Click "Login" to refresh your session  
+2. Check your internet connection  
 3. Verify you have access to profile.intra.42.fr
-
-### ChromeDriver version mismatch
-
-Update ChromeDriver
-sudo pacman -S chromedriver
-
-Or install matching version manually
-Check your Brave version: brave --version
-Download matching ChromeDriver from https://chromedriver.chromium.org/
 
 ## Uninstallation
 
-Using uninstall script
+Using uninstall script  
+```
 chmod +x uninstall.sh
 ./uninstall.sh
+```
 
-Or manually
-gnome-extensions disable LogtimeWidget@zsonie
+Or manually  
+```
+gnome-extensions disable LogtimeWidget@zsonie  
 rm -rf ~/.local/share/gnome-shell/extensions/LogtimeWidget@zsonie
+```
 
 ## Privacy & Security
 
-- Your Intra42 credentials are **never stored** by this extension
-- Session cookies are stored locally in your home directory
-- Cookies are only used to fetch your logtime data
+- Your [translate:Intra42] credentials are **never stored** by this extension  
+- Session cookies are stored locally in your home directory  
+- Cookies are only used to fetch your [translate:logtime] data  
 - No data is sent to external servers (except profile.intra.42.fr)
-
-## Contributing
-
-Contributions are welcome! Please feel free to submit issues or pull requests.
 
 ## License
 
-MIT License - See LICENSE file for details
+There's no License, come on.
 
 ## Credits
 
-- Developed by zsonie
-- Inspired by 42 School's monthly logtime requirements
+- Developed by zsonie  
+- Inspired by [translate:42 School]'s monthly [translate:logtime] requirements  
 - Built with GNOME Shell Extension APIs
 
 ## Support
@@ -204,4 +192,4 @@ For issues, questions, or feature requests, please open an issue on the project 
 
 ---
 
-**Note**: This extension is not officially affiliated with or endorsed by 42 School.
+**Note**: This extension is not officially affiliated with or endorsed by [translate:42 School].
