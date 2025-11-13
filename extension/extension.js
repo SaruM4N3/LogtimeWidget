@@ -19,7 +19,7 @@ const { Settings } = Me.imports.utils.settings;
 const { Debug } = Me.imports.utils.debug;
 
 // DEBUGS
-const AppName = '[LogtimeWidget2]';
+const AppName = '[LogtimeWidget]';
 
 // CONST VAR
 const username = GLib.get_user_name();
@@ -173,7 +173,15 @@ class LogWidget {
 		plusBtn.connect('clicked', () => {
 			this.bonusDays++;
 			countLabel.set_text(String(this.bonusDays));
-			Storage.saveDays(this.bonusDays, this.giftDays);
+			Storage.saveDays(
+				this.bonusDays,
+				this.giftDays,
+				this.showMinutes,
+				this.displayFormat,
+				this.startColor,
+				this.endColor,
+				this.aheadColor
+			);
 			Debug.logInfo(`Bonus days: ${this.bonusDays}`);
 			this._updateLogtime();
 		});
@@ -236,7 +244,15 @@ class LogWidget {
 		plusBtn.connect('clicked', () => {
 			this.giftDays++;
 			countLabel.set_text(String(this.giftDays));
-			Storage.saveDays(this.bonusDays, this.giftDays, this.showMinutes, this.displayFormat);
+			Storage.saveDays(
+				this.bonusDays,
+				this.giftDays,
+				this.showMinutes,
+				this.displayFormat,
+				this.startColor,
+				this.endColor,
+				this.aheadColor
+			);
 			Debug.logInfo(`Gift days: ${this.giftDays}`);
 			this._updateLogtime();
 		});

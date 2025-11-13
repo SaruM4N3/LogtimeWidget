@@ -204,12 +204,12 @@ function formatTimeDisplay(data, bonusDays, giftDays, showMinutes = true, displa
         let text;
         if (showMinutes) {
             text = isAhead 
-                ? `+${absHours}h${pad(absMinutes)}` 
-                : `-${absHours}h${pad(absMinutes)}`;
+                ? `+${absHours}h${pad(absMinutes)} above!` 
+                : `Remaining: ${absHours}h${pad(absMinutes)}`;
         } else {
             text = isAhead 
-                ? `+${absHours}h` 
-                : `-${absHours}h`;
+                ? `+${absHours}h above!` 
+                : `Remaining: ${absHours}h`;
         }
         
         return {

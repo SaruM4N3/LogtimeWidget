@@ -1,6 +1,6 @@
 # Logtime Widget - GNOME Shell Extension
 
-A GNOME Shell extension that tracks and displays your monthly [translate:logtime] for 42 School ([translate:Intra42]). Shows real-time progress towards your monthly hour requirements with visual status indicators.
+A GNOME Shell extension that tracks and displays your monthly logtime for 42 School. Shows real-time progress towards your monthly hour requirements with visual status indicators.
 
 ## Screenshots
 
