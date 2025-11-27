@@ -3,13 +3,12 @@
 # Logtime Widget GNOME Extension Installer
 # For LogtimeWidget@zsonie
 
-set -e  # Exit on error
+set -e
 
-# Colors for output
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
-NC='\033[0m' # No Color
+NC='\033[0m'
 
 echo -e "${GREEN}========================================${NC}"
 echo -e "${GREEN}  Logtime Widget Extension Installer${NC}"
@@ -19,16 +18,6 @@ echo ""
 # Extension details
 EXTENSION_UUID="LogtimeWidget@zsonie"
 EXTENSION_DIR="$HOME/.local/share/gnome-shell/extensions/$EXTENSION_UUID"
-
-# Check if running on GNOME
-if [ "$XDG_CURRENT_DESKTOP" != "GNOME" ]; then
-    echo -e "${YELLOW}Warning: This script is designed for GNOME Shell \n${GREEN}(42Lyon sessions are running on GNOME, just press y)${NC}"
-    read -p "Continue anyway? (y/N): " -n 1 -r
-    echo
-    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-        exit 1
-    fi
-fi
 
 # Check dependencies
 echo -e "${YELLOW}Checking dependencies...${NC}"
@@ -60,10 +49,6 @@ echo ""
 echo -e "${GREEN}========================================${NC}"
 echo -e "${GREEN}  Installation Complete!${NC}"
 echo -e "${GREEN}========================================${NC}"
-echo ""
-echo -e "${GREEN}The extension should now appear in your top panel!\n${NC}"
-echo -e "${YELLOW}If not you should go to extension and enable it!${NC}"
-echo -e "${YELLOW}or simply execute: gnome-extensions enable "$EXTENSION_UUID"${NC}"
 
 killall -3 gnome-shell
 sleep 1

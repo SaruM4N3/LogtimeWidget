@@ -12,11 +12,14 @@ const St = imports.gi.St;
 const ByteArray = imports.byteArray;
 
 const { Connect } = Me.imports.connect.connect;
+const { Updater } = Me.imports.connect.updater;
 const { Data } = Me.imports.data.data;
 const { Storage } = Me.imports.data.storage;
 const { Calculation } = Me.imports.utils.calculation;
 const { Settings } = Me.imports.utils.settings;
 const { Debug } = Me.imports.utils.debug;
+
+let updateManager;
 
 // DEBUGS
 const AppName = '[LogtimeWidget]';
@@ -48,6 +51,12 @@ class LogWidget {
 		this._setupApp();
 		this._setupStorageMonitoring();
 		this._validateAndLoginIfNeeded();
+
+		updateManager = new Updater.UpdateManager();
+		GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, 5, () => {
+			updateManager.checkForUpdates();
+			return GLib.SOURCE_REMOVE;
+		});
 	}
 
 	disable() {
@@ -65,6 +74,7 @@ class LogWidget {
 			this._indicator.destroy();
 			this._indicator = null;
 		}
+		updateManager = null;
 	}
 
 	_setupApp() {
