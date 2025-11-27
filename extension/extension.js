@@ -12,7 +12,7 @@ const St = imports.gi.St;
 const ByteArray = imports.byteArray;
 
 const { Connect } = Me.imports.connect.connect;
-const { Updater } = Me.imports.connect.updater;
+const Updater = Me.imports.connect.updater;
 const { Data } = Me.imports.data.data;
 const { Storage } = Me.imports.data.storage;
 const { Calculation } = Me.imports.utils.calculation;
