@@ -7,18 +7,26 @@ const Me = ExtensionUtils.getCurrentExtension();
 
 var UpdateManager = class UpdateManager {
     constructor() {
-        let extensionDir = Gio.File.new_for_path(Me.path);
+        let path = Me.path;
         
-        let repoDir = extensionDir.get_parent();
-        
-        if (repoDir) {
-            this._repoPath = repoDir.get_path();
-        } else {
-            this._repoPath = Me.path; 
+        if (GLib.file_test(path, GLib.FileTest.IS_SYMLINK)) {
+            let target = GLib.file_read_link(path);
+            
+            if (target.startsWith('/')) {
+                path = target;
+            } else {
+                let parent = GLib.path_get_dirname(path);
+                path = GLib.build_filenamev([parent, target]);
+            }
         }
         
+        // Now 'path' is "/home/user/.config/gnome-extensions-source/LogtimeWidget/extension"
+        this._repoPath = GLib.path_get_dirname(path);
+        
+        global.log(`[LogtimeWidget] Git Repo Path: ${this._repoPath}`);
         this._source = null;
     }
+
 
     checkForUpdates() {
         this._runGitCommand(['fetch'], (success) => {
