@@ -132,7 +132,7 @@ class LogWidget {
 			this.updateItem.actor.visible = false;
 			this.updateItem.label.text = "Updating...";
 		});
-		this.indicator.menu.addMenuItem(this.updateItem);
+		this._indicator.menu.addMenuItem(this.updateItem);
 	}
 
 	_createMenuItem(label, callback) {
