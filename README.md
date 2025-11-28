@@ -126,7 +126,7 @@ Real-time log monitoring
 Or use Looking Glass (Alt+F2, type 'lg')
 
 Cookie capture logs are written to:  
-`~/.local/share/gnome-shell/extensions/LogtimeWidget@zsonie/utils/cookie_capture.log`
+`~/.local/share/gnome-shell/extensions/LogtimeWidget@zsonie/utils/.cookie_capture.log`
 
 ### Building from Source
 
@@ -149,7 +149,7 @@ Enable manually if needed
 The Brave window should close automatically after successful login. If it doesn't:  
 1. Close it manually after logging in  
 2. The cookie should still be captured  
-3. Check `cookie_capture.log` for errors
+3. Check `.cookie_capture.log` for errors
 
 ### "Failed to get data" error
 

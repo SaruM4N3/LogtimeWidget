@@ -23,7 +23,7 @@ def capture_cookies():
     log_file = os.path.join(
         os.path.expanduser("~"),
         ".local/share/gnome-shell/extensions/LogtimeWidget@zsonie",
-        "utils/cookie_capture.log"
+        "utils/.cookie_capture.log"
     )
     
     # Redirect stdout and stderr to log file
