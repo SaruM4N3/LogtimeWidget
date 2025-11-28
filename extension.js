@@ -14,7 +14,7 @@ const ByteArray = imports.byteArray;
 const { Connect } = Me.imports.connect.connect;
 const Updater = Me.imports.connect.updater;
 const { Data } = Me.imports.data.data;
-const { Storage } = Me.imports.data.storage;
+const { MyStorage } = Me.imports.data.storage;
 const { Calculation } = Me.imports.utils.calculation;
 const { Settings } = Me.imports.utils.settings;
 const { Debug } = Me.imports.utils.debug;
@@ -31,7 +31,7 @@ const username = GLib.get_user_name();
 
 class LogWidget {
 	constructor() {
-		let saved = Storage.loadDays();
+		let saved = MyStorage.loadDays();
 		this.bonusDays = saved.bonusDays;
 		this.giftDays = saved.giftDays;
 		this.showMinutes = saved.showMinutes !== undefined ? saved.showMinutes : true;
@@ -145,13 +145,34 @@ class LogWidget {
 		return item;
 	}
 
-	_setupStorageMonitoring() {
-		// Import Settings module
-		const { Settings } = Me.imports.utils.settings;
+    _setupStorageMonitoring() {
+        // Import Settings module
+        const { Settings } = Me.imports.utils.settings;
 
-		// Setup monitoring and store the monitor
-		this._fileMonitor = Settings.setupStorageMonitoring(this);
-	}
+        // Setup monitoring and store the monitor
+        // We pass a callback that reloads EVERYTHING
+        this._fileMonitor = Settings.setupStorageMonitoring(this, () => {
+            // This function runs when saved_days.json changes
+            
+            // 1. Reload data from storage
+            let saved = Storage.loadDays(); // or MyStorage.loadDays() if you renamed it
+            
+            // 2. Update local state
+            this.bonusDays = saved.bonusDays;
+            this.giftDays = saved.giftDays;
+            this.showMinutes = saved.showMinutes;
+            this.displayFormat = saved.displayFormat || 'ratio'; // <--- FIX: Update format!
+            this.startColor = saved.startColor;
+            this.endColor = saved.endColor;
+            this.aheadColor = saved.aheadColor;
+
+            Debug.logInfo(`Settings reloaded: format=${this.displayFormat}`);
+
+            // 3. Refresh UI
+            this._updateLogtime();
+        });
+    }
+
 
 	_setupBonusDaySubmenu() {
 		this._bonusItem = new PopupMenu.PopupSubMenuMenuItem('Bonus Days');
@@ -174,7 +195,7 @@ class LogWidget {
 			if (this.bonusDays > 0) {
 				this.bonusDays--;
 				countLabel.set_text(String(this.bonusDays));
-				Storage.saveDays(
+				MyStorage.saveDays(
 					this.bonusDays,
 					this.giftDays,
 					this.showMinutes,
@@ -204,7 +225,7 @@ class LogWidget {
 		plusBtn.connect('clicked', () => {
 			this.bonusDays++;
 			countLabel.set_text(String(this.bonusDays));
-			Storage.saveDays(
+			MyStorage.saveDays(
 				this.bonusDays,
 				this.giftDays,
 				this.showMinutes,
@@ -245,7 +266,7 @@ class LogWidget {
 			if (this.giftDays > 0) {
 				this.giftDays--;
 				countLabel.set_text(String(this.giftDays));
-				Storage.saveDays(
+				MyStorage.saveDays(
 					this.bonusDays,
 					this.giftDays,
 					this.showMinutes,
@@ -275,7 +296,7 @@ class LogWidget {
 		plusBtn.connect('clicked', () => {
 			this.giftDays++;
 			countLabel.set_text(String(this.giftDays));
-			Storage.saveDays(
+			MyStorage.saveDays(
 				this.bonusDays,
 				this.giftDays,
 				this.showMinutes,

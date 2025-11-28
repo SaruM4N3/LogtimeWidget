@@ -124,7 +124,7 @@ function loadDays() {
     };
 }
 
-var Storage = {
+var MyStorage = {
     saveDays,
     loadDays
 };
