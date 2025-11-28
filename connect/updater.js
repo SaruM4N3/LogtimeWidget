@@ -3,6 +3,7 @@ const Main = imports.ui.main;
 const MessageTray = imports.ui.messageTray;
 const ExtensionUtils = imports.misc.extensionUtils;
 const Me = ExtensionUtils.getCurrentExtension();
+const { Debug } = Me.imports.utils.debug;
 
 var UpdateManager = class UpdateManager {
     constructor() {
@@ -19,13 +20,12 @@ var UpdateManager = class UpdateManager {
                 if (!success) return;
 
                 let count = parseInt(output.trim());
-                global.log(`[LogtimeWidget] Git Check: ${count} commits behind`);
+                Debug.logInfo(`Git Check: ${count} commits behind`);
                 if (!isNaN(count) && count > 0) {
                     // 1. Run the callback to update the Menu UI
                     if (onUpdateAvailable) {
                         onUpdateAvailable(count);
                     }
-
                     // 2. Show the system notification (existing logic)
                     this._notifyUser(count);
                 }
