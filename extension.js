@@ -52,10 +52,19 @@ class LogWidget {
 		this._setupStorageMonitoring();
 		this._validateAndLoginIfNeeded();
 
-		updateManager = new Updater.UpdateManager();
-		GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, 5, () => {
-			updateManager.checkForUpdates();
-			return GLib.SOURCE_REMOVE;
+
+		this.updateManager = new Updater.UpdateManager();
+
+		// Run check immediately or after a small delay
+		this.checkTimeout = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, 10, () => {
+			this.updateManager.checkForUpdates((count) => {
+				// This code runs ONLY if update found
+				if (this.updateItem) {
+					this.updateItem.label.text = `Update Available (${count} commits)`;
+					this.updateItem.actor.visible = true;
+				}
+			});
+			return GLib.SOURCE_CONTINUE; // Keep checking periodically? Or GLib.SOURCE_REMOVE to check once.
 		});
 	}
 
@@ -116,6 +125,14 @@ class LogWidget {
 		this._indicator.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
 		this._indicator.menu.addMenuItem(this._restartItem);
 		this._indicator.menu.addMenuItem(this._settingsItem);
+		this.updateItem = new PopupMenu.PopupMenuItem('Update Available');
+		this.updateItem.actor.visible = false;
+		this.updateItem.connect('activate', () => {
+			this.updateManager.performUpdate();
+			this.updateItem.actor.visible = false;
+			this.updateItem.label.text = "Updating...";
+		});
+		this.indicator.menu.addMenuItem(this.updateItem);
 	}
 
 	_createMenuItem(label, callback) {
