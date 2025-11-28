@@ -128,7 +128,7 @@ class LogWidget {
 		this.updateItem = new PopupMenu.PopupMenuItem('Update Available');
 		this.updateItem.actor.visible = false;
 		this.updateItem.connect('activate', () => {
-			this.updateManager.performUpdate();
+			this.updateManager._performUpdate();
 			this.updateItem.actor.visible = false;
 			this.updateItem.label.text = "Updating...";
 		});
