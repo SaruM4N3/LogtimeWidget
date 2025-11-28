@@ -15,12 +15,17 @@ try {
     // Prefs context might fail here, we handle it below
 }
 
-// Helper to find the directory safely from anywhere
 function getExtensionDir() {
     if (Me) return Me.path;
-    // Fallback: relative to this file location
-    return GLib.path_get_dirname(import.meta.url.replace('file://', '')); 
+    
+    // Fallback for Prefs window (where Me is missing)
+    // We assume the standard installation path relative to user home
+    return GLib.build_filenamev([
+        GLib.get_home_dir(), 
+        '.local/share/gnome-shell/extensions/LogtimeWidget@zsonie'
+    ]);
 }
+
 
 // --- FIX 2: Robust Logging ---
 // If Me is missing (prefs), don't crash on Debug import
@@ -34,7 +39,7 @@ const Debug = Me ? Me.imports.utils.debug.Debug : {
 const ROOT_DIR = getExtensionDir();
 const STORAGE_DIR = ROOT_DIR + '/data';
 // Using visible file for easier debugging
-const STORAGE_FILE = GLib.build_filenamev([STORAGE_DIR, 'saved_days.json']); 
+const STORAGE_FILE = GLib.build_filenamev([STORAGE_DIR, '.saved_days.json']); 
 
 // Default colors
 const DEFAULT_START_COLOR = '#ef4444';
@@ -136,9 +141,8 @@ function getDefaults() {
     };
 }
 
-// --- FIX 3: Export everything needed ---
 var MyStorage = {
     saveDays: saveDays,
     loadDays: loadDays,
-    STORAGE_FILE: STORAGE_FILE // <--- CRITICAL for settings.js
+    STORAGE_FILE: STORAGE_FILE
 };
