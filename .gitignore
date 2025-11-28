@@ -1,0 +1,3 @@
+utils/*.json
+utils/*.log
+connect/__pycache__/
