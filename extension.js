@@ -336,7 +336,7 @@ class LogWidget {
 			GLib.build_filenamev([
 				GLib.get_home_dir(),
 				'.local/share/gnome-shell/extensions/LogtimeWidget@zsonie',
-				'utils/intra42_cookies.json'
+				'utils/.intra42_cookies.json'
 			])
 		);
 
@@ -463,7 +463,7 @@ class LogWidget {
 				GLib.build_filenamev([
 					GLib.get_home_dir(),
 					'.local/share/gnome-shell/extensions/LogtimeWidget@zsonie',
-					'utils/intra42_cookies.json'
+					'utils/.intra42_cookies.json'
 				])
 			);
 

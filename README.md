@@ -57,7 +57,7 @@ Wayland: Log out and log back in`
 ### Configuration
 
 The extension stores your session cookie securely in:  
-`~/.local/share/gnome-shell/extensions/LogtimeWidget@zsonie/intra42_cookies.json`
+`~/.local/share/gnome-shell/extensions/LogtimeWidget@zsonie/.intra42_cookies.json`
 
 Bonus and gift days are stored in:  
 `~/.local/share/gnome-shell/extensions/LogtimeWidget@zsonie/storage.json`

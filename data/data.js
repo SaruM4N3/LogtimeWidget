@@ -18,7 +18,7 @@ function deleteCookiesFile() {
         const cookiesPath = GLib.build_filenamev([
             GLib.get_home_dir(),
             '.local/share/gnome-shell/extensions/LogtimeWidget@zsonie',
-            'intra42_cookies.json'
+            '.intra42_cookies.json'
         ]);
         
         const file = Gio.File.new_for_path(cookiesPath);

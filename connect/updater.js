@@ -48,12 +48,20 @@ var UpdateManager = class UpdateManager {
     }
 
     _performUpdate() {
-        this._runGitCommand(['pull'], (success, output) => {
-            if (success) {
-                Main.notify(Me.metadata.name, "Update successful! Please restart GNOME Shell (Alt+F2, r).");
-            } else {
-                Main.notify(Me.metadata.name, "Update failed. Check logs.");
+        // 1. Reset EVERYTHING to match the current commit (wipes local changes)
+        this._runGitCommand(['reset', '--hard', 'HEAD'], (success) => {
+            if (!success) {
+                global.log("[LogtimeWidget] Reset failed, trying pull anyway...");
             }
+
+            // 2. Now Pull (should succeed because repo is clean)
+            this._runGitCommand(['pull'], (success, output) => {
+                if (success) {
+                    Main.notify(Me.metadata.name, "Update successful! Please restart GNOME Shell.");
+                } else {
+                    Main.notify(Me.metadata.name, "Update failed. Check logs.");
+                }
+            });
         });
     }
 
