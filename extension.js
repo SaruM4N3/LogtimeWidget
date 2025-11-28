@@ -145,34 +145,29 @@ class LogWidget {
 		return item;
 	}
 
-    _setupStorageMonitoring() {
-        // Import Settings module
-        const { Settings } = Me.imports.utils.settings;
+	_setupStorageMonitoring() {
+		// Import Settings module
+		const { Settings } = Me.imports.utils.settings;
 
-        // Setup monitoring and store the monitor
-        // We pass a callback that reloads EVERYTHING
-        this._fileMonitor = Settings.setupStorageMonitoring(this, () => {
-            // This function runs when saved_days.json changes
-            
-            // 1. Reload data from storage
-            let saved = Storage.loadDays(); // or MyStorage.loadDays() if you renamed it
-            
-            // 2. Update local state
-            this.bonusDays = saved.bonusDays;
-            this.giftDays = saved.giftDays;
-            this.showMinutes = saved.showMinutes;
-            this.displayFormat = saved.displayFormat || 'ratio'; // <--- FIX: Update format!
-            this.startColor = saved.startColor;
-            this.endColor = saved.endColor;
-            this.aheadColor = saved.aheadColor;
+		this._fileMonitor = Settings.setupStorageMonitoring(this, () => {
+			// 1. Reload data from storage (Use MyStorage!)
+			let saved = MyStorage.loadDays();
 
-            Debug.logInfo(`Settings reloaded: format=${this.displayFormat}`);
+			// 2. Update local state
+			this.bonusDays = saved.bonusDays;
+			this.giftDays = saved.giftDays;
+			this.showMinutes = saved.showMinutes;
+			this.displayFormat = saved.displayFormat || 'ratio';
+			this.startColor = saved.startColor;
+			this.endColor = saved.endColor;
+			this.aheadColor = saved.aheadColor;
 
-            // 3. Refresh UI
-            this._updateLogtime();
-        });
-    }
+			Debug.logInfo(`Settings reloaded: format=${this.displayFormat}`);
 
+			// 3. Refresh UI
+			this._updateLogtime();
+		});
+	}
 
 	_setupBonusDaySubmenu() {
 		this._bonusItem = new PopupMenu.PopupSubMenuMenuItem('Bonus Days');
