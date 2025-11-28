@@ -54,7 +54,6 @@ class LogWidget {
 		this._setupStorageMonitoring();
 		this._validateAndLoginIfNeeded();
 
-
 		this.updateManager = new Updater.UpdateManager();
 
 		// Run check immediately or after a small delay
@@ -146,14 +145,9 @@ class LogWidget {
 	}
 
 	_setupStorageMonitoring() {
-		// Import Settings module
-		const { Settings } = Me.imports.utils.settings;
-
 		this._fileMonitor = Settings.setupStorageMonitoring(this, () => {
-			// 1. Reload data from storage (Use MyStorage!)
 			let saved = MyStorage.loadDays();
 
-			// 2. Update local state
 			this.bonusDays = saved.bonusDays;
 			this.giftDays = saved.giftDays;
 			this.showMinutes = saved.showMinutes;
@@ -163,8 +157,6 @@ class LogWidget {
 			this.aheadColor = saved.aheadColor;
 
 			Debug.logInfo(`Settings reloaded: format=${this.displayFormat}`);
-
-			// 3. Refresh UI
 			this._updateLogtime();
 		});
 	}

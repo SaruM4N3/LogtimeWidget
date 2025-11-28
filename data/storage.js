@@ -1,42 +1,66 @@
 /* storage.js
  * Persistent storage utilities
  */
-
 const GLib = imports.gi.GLib;
 const Gio = imports.gi.Gio;
 const ByteArray = imports.byteArray;
 const ExtensionUtils = imports.misc.extensionUtils;
 
-// --- FIX 1: Safe Extension Path Detection ---
+// --- FIX: Safe Extension Path Detection ---
 let Me;
 try {
     Me = ExtensionUtils.getCurrentExtension();
 } catch (e) {
-    // Prefs context might fail here, we handle it below
+    Me = null;
 }
 
 function getExtensionDir() {
-    if (Me) return Me.path;
-    
-    // Fallback for Prefs window (where Me is missing)
-    // We assume the standard installation path relative to user home
-    return GLib.build_filenamev([
-        GLib.get_home_dir(), 
-        '.local/share/gnome-shell/extensions/LogtimeWidget@zsonie'
-    ]);
+    let path;
+    if (Me) {
+        path = Me.path;
+    } else {
+        // Fallback for Prefs window
+        path = GLib.build_filenamev([
+            GLib.get_home_dir(),
+            '.local/share/gnome-shell/extensions/LogtimeWidget@zsonie'
+        ]);
+    }
+
+    // CRITICAL FIX: Resolve Symlinks
+    // This ensures both Prefs (installed path) and Widget (dev path) 
+    // point to the EXACT SAME physical file on disk.
+    try {
+        let file = Gio.File.new_for_path(path);
+        let info = file.query_info(Gio.FILE_ATTRIBUTE_STANDARD_SYMLINK_TARGET, Gio.FileQueryInfoFlags.NONE, null);
+        let target = info.get_symlink_target();
+        if (target) {
+            // If it's a relative symlink, resolve it relative to the parent
+            if (!target.startsWith('/')) {
+                let parent = file.get_parent();
+                return parent.resolve_relative_path(target).get_path();
+            }
+            return target;
+        }
+    } catch (e) {
+        // Not a symlink or other error, use original path
+    }
+    return path;
 }
 
-
-// --- FIX 2: Robust Logging ---
-// If Me is missing (prefs), don't crash on Debug import
-const Debug = Me ? Me.imports.utils.debug.Debug : {
-    logInfo: (m) => global.log(`[Logtime] INFO: ${m}`),
+// Debug helper that works in both contexts
+const Debug = {
+    logInfo: (m) => {
+        let msg = `[Logtime] INFO: ${m}`;
+        if (Me && Me.imports && Me.imports.utils && Me.imports.utils.debug) 
+             Me.imports.utils.debug.Debug.logInfo(m);
+        else global.log(msg);
+    },
     logError: (m) => global.log(`[Logtime] ERROR: ${m}`),
     logSuccess: (m) => global.log(`[Logtime] SUCCESS: ${m}`)
 };
 
 // Storage file path
-const STORAGE_DIR = Me.path + '/data';
+const STORAGE_DIR = getExtensionDir() + '/data';
 const STORAGE_FILE = GLib.build_filenamev([STORAGE_DIR, '.saved_days.json']);
 
 // Default colors
@@ -77,7 +101,7 @@ function saveDays(bonusDays, giftDays, showMinutes, displayFormat, startColor, e
 
         let file = Gio.File.new_for_path(STORAGE_FILE);
         file.replace_contents(data, null, false, Gio.FileCreateFlags.REPLACE_DESTINATION, null);
-        Debug.logSuccess(`Saved settings for ${getCurrentMonth()}`);
+        Debug.logSuccess(`Saved settings to ${STORAGE_FILE}`);
     } catch (e) {
         Debug.logError(`Failed to save days: ${e.message}`);
     }
@@ -95,6 +119,7 @@ function loadDays() {
             let data = JSON.parse(ByteArray.toString(contents));
             let currentMonth = getCurrentMonth();
 
+            // Check if month changed
             if (data.month === currentMonth) {
                 return {
                     bonusDays: data.bonusDays || 0,
@@ -107,9 +132,7 @@ function loadDays() {
                 };
             } else {
                 // Month changed - reset days but keep settings
-                Debug.logInfo(`New month (${currentMonth}), resetting days.`);
                 let defaults = getDefaults();
-                // Preserve settings
                 defaults.displayFormat = data.displayFormat || 'ratio';
                 defaults.showMinutes = data.showMinutes;
                 defaults.startColor = data.startColor;

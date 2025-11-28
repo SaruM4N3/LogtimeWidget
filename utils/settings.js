@@ -1,7 +1,6 @@
 /* settings.js
  * Settings monitoring utilities
  */
-
 const Gio = imports.gi.Gio;
 const GLib = imports.gi.GLib;
 const ExtensionUtils = imports.misc.extensionUtils;
@@ -15,21 +14,25 @@ const { Debug } = Me.imports.utils.debug;
  * @returns {Gio.FileMonitor} The file monitor instance
  */
 function setupStorageMonitoring(extension, onChangeCallback) {
-    let file = Gio.File.new_for_path(MyStorage.STORAGE_FILE);
+    let dirPath = GLib.path_get_dirname(MyStorage.STORAGE_FILE);
+    let dir = Gio.File.new_for_path(dirPath);
     
-    let monitor = file.monitor(Gio.FileMonitorFlags.NONE, null);
+    let storageFileObj = Gio.File.new_for_path(MyStorage.STORAGE_FILE);
+    
+    let monitor = dir.monitor_directory(Gio.FileMonitorFlags.NONE, null);
 
-    monitor.connect('changed', (file, otherFile, eventType) => {
-        if (eventType === Gio.FileMonitorEvent.CHANGES_DONE_HINT || 
-            eventType === Gio.FileMonitorEvent.CHANGED) {
+    monitor.connect('changed', (monitor, file, otherFile, eventType) => {
+        if (file && file.equal(storageFileObj)) {
+            Debug.logInfo(`Storage file changed (Event: ${eventType})`);
             
-            Debug.logInfo("Settings file changed, reloading...");
-
-            if (onChangeCallback) {
-                onChangeCallback();
-            } else {
-                extension._updateLogtime();
-            }
+            GLib.timeout_add(GLib.PRIORITY_DEFAULT, 200, () => {
+                if (onChangeCallback) {
+                    onChangeCallback();
+                } else {
+                    extension._updateLogtime();
+                }
+                return GLib.SOURCE_REMOVE;
+            });
         }
     });
     
