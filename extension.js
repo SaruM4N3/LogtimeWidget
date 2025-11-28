@@ -43,6 +43,8 @@ class LogWidget {
 		this._cachedData = null;
 		this._testData = null;
 		this._fileMonitor = null;
+		this._updateAvailable = false;
+
 		Debug.logInfo(`Loaded from storage: bonus=${this.bonusDays}, gift=${this.giftDays}, colors=[${this.startColor},${this.endColor},${this.aheadColor}]`);
 	}
 
@@ -56,15 +58,17 @@ class LogWidget {
 		this.updateManager = new Updater.UpdateManager();
 
 		// Run check immediately or after a small delay
-		this.checkTimeout = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, 10, () => {
+		this.checkTimeout = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, 60, () => {
 			this.updateManager.checkForUpdates((count) => {
-				// This code runs ONLY if update found
+				this._updateAvailable = true;
+				this._updateLogtime();
 				if (this.updateItem) {
-					this.updateItem.label.text = `Update Available (${count} commits)`;
+					this.updateItem.label.text = `Update Available`;
 					this.updateItem.actor.visible = true;
+					this.updateItem.label.set_style('color: #4ade80; font-weight: bold;');
 				}
 			});
-			return GLib.SOURCE_CONTINUE; // Keep checking periodically? Or GLib.SOURCE_REMOVE to check once.
+			return GLib.SOURCE_CONTINUE;
 		});
 	}
 
@@ -592,6 +596,11 @@ class LogWidget {
 		let color = this._interpolateColor(percentage);
 
 		this._label.set_style(`color: ${color}; font-weight: 600;`);
+		let displayText = result.text;
+
+		if (this._updateAvailable) {
+			displayText += "  [UPDATE]";
+		}
 		Debug.logSuccess(`Updated: ${result.text} [minutes:${this.showMinutes}, format:${this.displayFormat}]`);
 	}
 

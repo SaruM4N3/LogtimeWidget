@@ -10,6 +10,7 @@ var UpdateManager = class UpdateManager {
         // Repo root = installed extension dir
         this._repoPath = Me.path;
         this._source = null;
+        this._updateAvailable = false;
     }
 
     checkForUpdates(onUpdateAvailable) {
@@ -57,7 +58,7 @@ var UpdateManager = class UpdateManager {
             // 2. Now Pull (should succeed because repo is clean)
             this._runGitCommand(['pull'], (success, output) => {
                 if (success) {
-                    Main.notify(Me.metadata.name, "Update successful! Please restart GNOME Shell.");
+                    Main.notify(Me.metadata.name, "Update successful! Please restart GNOME Shell.\nAlt+f2 then type r and enter.");
                 } else {
                     Main.notify(Me.metadata.name, "Update failed. Check logs.");
                 }
