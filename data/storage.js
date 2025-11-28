@@ -55,8 +55,6 @@ const Debug = {
              Me.imports.utils.debug.Debug.logInfo(m);
         else global.log(msg);
     },
-    logError: (m) => global.log(`[Logtime] ERROR: ${m}`),
-    logSuccess: (m) => global.log(`[Logtime] SUCCESS: ${m}`)
 };
 
 // Storage file path
