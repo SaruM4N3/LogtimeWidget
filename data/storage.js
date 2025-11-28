@@ -101,7 +101,7 @@ function saveDays(bonusDays, giftDays, showMinutes, displayFormat, startColor, e
         file.replace_contents(data, null, false, Gio.FileCreateFlags.REPLACE_DESTINATION, null);
         Debug.logSuccess(`Saved settings to ${STORAGE_FILE}`);
     } catch (e) {
-        Debug.logError(`Failed to save days: ${e.message}`);
+        Debug.logError(`Failed to save days: ${e}`);
     }
 }
 
