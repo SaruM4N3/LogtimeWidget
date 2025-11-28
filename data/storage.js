@@ -36,10 +36,8 @@ const Debug = Me ? Me.imports.utils.debug.Debug : {
 };
 
 // Storage file path
-const ROOT_DIR = getExtensionDir();
-const STORAGE_DIR = ROOT_DIR + '/data';
-// Using visible file for easier debugging
-const STORAGE_FILE = GLib.build_filenamev([STORAGE_DIR, '.saved_days.json']); 
+const STORAGE_DIR = Me.path + '/data';
+const STORAGE_FILE = GLib.build_filenamev([STORAGE_DIR, '.saved_days.json']);
 
 // Default colors
 const DEFAULT_START_COLOR = '#ef4444';
