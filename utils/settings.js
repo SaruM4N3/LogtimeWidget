@@ -9,11 +9,8 @@ const Me = ExtensionUtils.getCurrentExtension();
 const { Storage } = Me.imports.data.storage;
 const { Debug } = Me.imports.utils.debug;
 
-const STORAGE_FILE = GLib.build_filenamev([
-	GLib.get_home_dir(),
-	'.config/LogtimeWidget',
-	'saved_days.json'
-]);
+const STORAGE_DIR = Me.path + '/data';
+const STORAGE_FILE = GLib.build_filenamev([STORAGE_DIR, '.saved_days.json']);
 
 /**
  * Setup file monitoring for storage changes

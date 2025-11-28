@@ -10,8 +10,8 @@ const Me = ExtensionUtils.getCurrentExtension();
 const { Debug } = Me.imports.utils.debug;
 
 // Storage file path
-const STORAGE_DIR = GLib.get_home_dir() + '/.config/LogtimeWidget';
-const STORAGE_FILE = GLib.build_filenamev([STORAGE_DIR, 'saved_days.json']);
+const STORAGE_DIR = Me.path + '/data';
+const STORAGE_FILE = GLib.build_filenamev([STORAGE_DIR, '.saved_days.json']);
 
 // Default colors
 const DEFAULT_START_COLOR = '#ef4444';
