@@ -20,7 +20,7 @@ SOURCE_DIR="$(pwd)"  # this repo
 INSTALL_DIR="$HOME/.local/share/gnome-shell/extensions/$EXTENSION_UUID"
 
 echo -e "${YELLOW}Checking dependencies...${NC}"
-pip3 install --user selenium psutil || echo -e "${RED}Warning: Python dependencies failed${NC}"
+pip3 install --user selenium psutil webdriver-manager || echo -e "${RED}Warning: Python dependencies failed${NC}"
 
 echo -e "${YELLOW}Cleaning old $INSTALL_DIR...${NC}"
 rm -rf "$INSTALL_DIR"
