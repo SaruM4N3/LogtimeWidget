@@ -2,10 +2,7 @@
 
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options as ChromeOptions
-from selenium.webdriver.firefox.options import Options as FirefoxOptions
 from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.firefox.service import Service as FirefoxService
-from webdriver_manager.firefox import GeckoDriverManager
 from selenium.webdriver.chrome.service import Service as ChromeService
 from webdriver_manager.chrome import ChromeDriverManager
 
@@ -18,16 +15,13 @@ import sys
 import psutil
 
 def get_cpu_count():
-    """Run 'nproc' to get the number of CPU cores."""
     try:
         output = subprocess.check_output(['nproc'], text=True).strip()
         return int(output)
-    except Exception as e:
-        print(f"Could not determine CPU count: {e}")
+    except:
         return 1
 
 def get_default_browser_binary():
-    """Detects the path to the default browser executable on Linux."""
     try:
         # 1. Ask xdg-settings
         try:
@@ -36,13 +30,14 @@ def get_default_browser_binary():
         except:
             desktop_filename = ""
 
-        # 2. Fallback if xdg-settings fails
+        # 2. Fallback checks (Removed Firefox)
         if not desktop_filename:
-            if shutil.which("firefox"): return shutil.which("firefox")
             if shutil.which("brave"): return shutil.which("brave")
+            if shutil.which("google-chrome"): return shutil.which("google-chrome")
+            if shutil.which("chromium"): return shutil.which("chromium")
             return None
 
-        # 3. Find the .desktop file
+        # 3. Find desktop file
         search_paths = [
             os.path.expanduser('~/.local/share/applications'),
             '/usr/share/applications',
@@ -58,10 +53,9 @@ def get_default_browser_binary():
                 break
         
         if not desktop_path:
-            if "firefox" in desktop_filename.lower(): return shutil.which("firefox")
             return None
 
-        # 4. Parse Exec line
+        # 4. Parse Exec
         config = configparser.ConfigParser(interpolation=None)
         config.read(desktop_path)
         
@@ -77,28 +71,16 @@ def get_default_browser_binary():
     
     return None
 
-def force_kill_process(pid):
-    """Kill a process and its children forcefully."""
-    try:
-        parent = psutil.Process(pid)
-        for child in parent.children(recursive=True):
-            child.kill()
-        parent.kill()
-    except psutil.NoSuchProcess:
-        pass
-
 def capture_cookies():
     base_dir = os.path.join(os.path.expanduser("~"), ".local/share/gnome-shell/extensions/LogtimeWidget@zsonie", "utils")
     output_file = os.path.join(base_dir, ".intra42_cookies.json")
     log_file = os.path.join(base_dir, ".cookie_capture.log")
     
-    # --- FIX 1: Set Custom TMPDIR for Snap Compatibility ---
+    # Fix for Snap (Useful even for Chromium snaps)
     custom_tmp = os.path.join(os.path.expanduser("~"), ".cache", "selenium_tmp")
     if os.path.exists(custom_tmp):
-        try:
-            shutil.rmtree(custom_tmp) 
-        except: 
-            pass
+        try: shutil.rmtree(custom_tmp) 
+        except: pass
     os.makedirs(custom_tmp, exist_ok=True)
     os.environ["TMPDIR"] = custom_tmp
     
@@ -107,67 +89,41 @@ def capture_cookies():
     sys.stderr = sys.stdout
     
     print(f"Script started. Time: {time.ctime()}")
-    print(f"Using TMPDIR: {custom_tmp}")
     
     driver = None
     driver_pid = None
     
-    # --- DECISION LOGIC (CPU Check) ---
+    # CPU Check
     cpu_cores = get_cpu_count()
     print(f"Detected CPU Cores: {cpu_cores}")
     
-    # Define fallback priority based on power
+    # Removed Firefox from priority list
     if cpu_cores > 4:
-        print("High core count: Preferring Brave in fallback.")
-        fallback_priority = [
-            "/usr/bin/brave", 
-            "/usr/bin/brave-browser", 
-            "/usr/bin/google-chrome", 
-            "/usr/bin/chromium"
-        ]
+        fallback_priority = ["/usr/bin/brave", "/usr/bin/google-chrome", "/usr/bin/chromium"]
     else:
-        print("Low core count: Preferring Chrome/Chromium in fallback.")
-        fallback_priority = [
-            "/usr/bin/google-chrome", 
-            "/usr/bin/chromium", 
-            "/usr/bin/brave", 
-            "/usr/bin/brave-browser"
-        ]
+        fallback_priority = ["/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/brave"]
 
-    # 1. Try Default Browser First
+    # 1. Default Browser
     default_bin = get_default_browser_binary()
-    
     if default_bin:
-        print(f"Detected default browser binary: {default_bin}")
-        try:
-            if "firefox" in default_bin.lower():
-                print("Initializing Firefox...")
-                options = FirefoxOptions()
-                options.binary_location = default_bin
-                options.set_preference("profile", custom_tmp)
-                
-                driver_path = GeckoDriverManager().install()
-                service = FirefoxService(executable_path=driver_path, env={"TMPDIR": custom_tmp})
-                driver = webdriver.Firefox(service=service, options=options)
-                
-            else:
-                print("Initializing Default (Chrome/Brave)...")
+        # Ensure we don't accidentally try to use Firefox if it was detected
+        if "firefox" in default_bin.lower():
+            print("Firefox detected as default but support is disabled. Skipping to fallback.")
+        else:
+            print(f"Detected default browser: {default_bin}")
+            try:
+                print("Initializing Chrome/Brave...")
                 options = ChromeOptions()
                 options.binary_location = default_bin
                 service = ChromeService(ChromeDriverManager().install())
                 driver = webdriver.Chrome(service=service, options=options)
-                
-        except Exception as e:
-            print(f"Failed to launch default browser: {e}")
-            driver = None
+            except Exception as e:
+                print(f"Default browser failed: {e}")
+                driver = None
 
-    # 2. Smart Fallback Logic
+    # 2. Fallback
     if not driver:
-        print("Falling back to alternative browsers...")
-        
-        # Find first available browser from our priority list
         fallback_path = next((p for p in fallback_priority if os.path.exists(p)), None)
-        
         if fallback_path:
             print(f"Fallback selected: {fallback_path}")
             try:
@@ -177,11 +133,9 @@ def capture_cookies():
                 driver = webdriver.Chrome(service=service, options=options)
             except Exception as e:
                 print(f"Fallback failed: {e}")
-        else:
-            print("No compatible fallback browser found in priority list.")
 
     if not driver:
-        print("CRITICAL ERROR: No browser could be started.")
+        print("CRITICAL ERROR: No browser started.")
         return False
         
     try:
@@ -189,7 +143,7 @@ def capture_cookies():
     except:
         driver_pid = None
 
-    # 3. Main Automation Logic
+    # 3. Automation
     try:
         driver.get("https://profile.intra.42.fr/")
         wait = WebDriverWait(driver, 600)
@@ -218,17 +172,30 @@ def capture_cookies():
         
     finally:
         print("Closing browser...")
+        
+        procs_to_kill = []
+        if driver_pid and psutil.pid_exists(driver_pid):
+            try:
+                parent = psutil.Process(driver_pid)
+                procs_to_kill.append(parent)
+                procs_to_kill.extend(parent.children(recursive=True))
+            except psutil.NoSuchProcess:
+                pass
+
         if driver:
             try:
                 driver.quit()
             except:
                 pass
         
-        if driver_pid:
-            time.sleep(2)
-            if psutil.pid_exists(driver_pid):
-                print(f"Force killing driver PID {driver_pid}...")
-                force_kill_process(driver_pid)
+        time.sleep(1) 
+        for p in procs_to_kill:
+            try:
+                if p.is_running():
+                    print(f"Force killing leftover process: {p.name()} ({p.pid})")
+                    p.kill()
+            except:
+                pass
         
         try:
             shutil.rmtree(custom_tmp)
