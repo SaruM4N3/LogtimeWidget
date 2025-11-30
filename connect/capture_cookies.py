@@ -43,8 +43,8 @@ def capture_cookies():
     driver_pid = None
     
     # --- CPU CHECK ---
-    # cpu_cores = get_cpu_count()
-    cpu_cores = 4
+    cpu_cores = get_cpu_count()
+    # cpu_cores = 4
     print(f"Detected CPU Cores: {cpu_cores}")
     
     # Define Priority List based on Power
