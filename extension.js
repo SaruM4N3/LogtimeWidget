@@ -606,6 +606,7 @@ class LogWidget {
 		this._label.set_style(`color: ${color}; font-weight: 600;`);
 		let displayText = result.text;
 
+		Debug.logSuccess(this._updateAvailable);
 		if (this._updateAvailable) {
 			displayText += "  [UPDATE]";
 		}
