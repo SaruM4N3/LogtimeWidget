@@ -192,7 +192,8 @@ class LogWidget {
 					this.aheadColor
 				);
 				Debug.logInfo(`Bonus days: ${this.bonusDays}`);
-				this._updateLogtime();
+				this._setupStorageMonitoring();
+				// this._updateLogtime();
 			}
 		});
 
@@ -222,7 +223,8 @@ class LogWidget {
 				this.aheadColor
 			);
 			Debug.logInfo(`Bonus days: ${this.bonusDays}`);
-			this._updateLogtime();
+			this._setupStorageMonitoring();
+			// this._updateLogtime();
 		});
 
 		box.add_child(minusBtn);
@@ -263,7 +265,8 @@ class LogWidget {
 					this.aheadColor
 				);
 				Debug.logInfo(`Gift days: ${this.giftDays}`);
-				this._updateLogtime();
+				this._setupStorageMonitoring();
+				// this._updateLogtime();
 			}
 		});
 
@@ -293,7 +296,8 @@ class LogWidget {
 				this.aheadColor
 			);
 			Debug.logInfo(`Gift days: ${this.giftDays}`);
-			this._updateLogtime();
+			this._setupStorageMonitoring();
+			// this._updateLogtime();
 		});
 
 		box.add_child(minusBtn);
@@ -577,7 +581,8 @@ class LogWidget {
 			(data) => {
 				this._cachedData = data;
 				Debug.logInfo('Data cached for instant updates');
-				this._updateLogtime();
+				this._setupStorageMonitoring();
+				// this._updateLogtime();
 			}
 		);
 	}
