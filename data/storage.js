@@ -5,57 +5,28 @@ const GLib = imports.gi.GLib;
 const Gio = imports.gi.Gio;
 const ByteArray = imports.byteArray;
 const ExtensionUtils = imports.misc.extensionUtils;
-
-// --- FIX: Safe Extension Path Detection ---
 let Me;
 try {
     Me = ExtensionUtils.getCurrentExtension();
 } catch (e) {
     Me = null;
 }
+const { Debug } = Me.imports.utils.debug;
+
+
 
 function getExtensionDir() {
     let path;
     if (Me) {
         path = Me.path;
     } else {
-        // Fallback for Prefs window
         path = GLib.build_filenamev([
             GLib.get_home_dir(),
             '.local/share/gnome-shell/extensions/LogtimeWidget@zsonie'
         ]);
     }
-
-    // CRITICAL FIX: Resolve Symlinks
-    // This ensures both Prefs (installed path) and Widget (dev path) 
-    // point to the EXACT SAME physical file on disk.
-    try {
-        let file = Gio.File.new_for_path(path);
-        let info = file.query_info(Gio.FILE_ATTRIBUTE_STANDARD_SYMLINK_TARGET, Gio.FileQueryInfoFlags.NONE, null);
-        let target = info.get_symlink_target();
-        if (target) {
-            // If it's a relative symlink, resolve it relative to the parent
-            if (!target.startsWith('/')) {
-                let parent = file.get_parent();
-                return parent.resolve_relative_path(target).get_path();
-            }
-            return target;
-        }
-    } catch (e) {
-        // Not a symlink or other error, use original path
-    }
     return path;
 }
-
-// Debug helper that works in both contexts
-const Debug = {
-    logInfo: (m) => {
-        let msg = `[Logtime] INFO: ${m}`;
-        if (Me && Me.imports && Me.imports.utils && Me.imports.utils.debug) 
-             Me.imports.utils.debug.Debug.logInfo(m);
-        else global.log(msg);
-    },
-};
 
 // Storage file path
 const STORAGE_DIR = getExtensionDir() + '/utils';

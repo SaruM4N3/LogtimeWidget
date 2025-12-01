@@ -96,8 +96,7 @@ function calculateWorkingDaysInMonth() {
     let holidays = getFrenchPublicHolidays(year);
     let holidaySet = new Set(holidays);
     
-    // Use JavaScript Date to get days in month (works correctly for December)
-    let jsDate = new Date(year, month, 0); // month is 1-indexed in GLib, but 0-indexed in JS
+    let jsDate = new Date(year, month, 0);
     let daysInMonth = jsDate.getDate();
     
     let workingDays = 0;
@@ -112,11 +111,8 @@ function calculateWorkingDaysInMonth() {
         if (dayOfWeek >= 1 && dayOfWeek <= 5 && !holidaySet.has(dateStr)) {
             workingDays++;
         }
-        
-        date.unref();
     }
     
-    now.unref();
     return workingDays;
 }
 

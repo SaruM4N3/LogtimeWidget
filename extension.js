@@ -312,7 +312,6 @@ class LogWidget {
 
 		if (current_time) {
 			timeStr = current_time.format("%H:%M:%S");
-			current_time.unref();
 		} else {
 			Debug.logError('GLib.DateTime.new_now_local() returned null in _manualRefresh');
 		}

@@ -159,7 +159,6 @@ function scrapedPeriodicRefresh(label, session_cookie, intervalSeconds, getBonus
 
 					if (current_time) {
 						timeLabel = current_time.format('%T');
-						current_time.unref();
 					} else {
 						Debug.logError('GLib.DateTime.new_now_local() returned null');
 					}
