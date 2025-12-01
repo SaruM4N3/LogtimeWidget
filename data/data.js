@@ -151,7 +151,6 @@ function scrapedPeriodicRefresh(label, session_cookie, intervalSeconds, getBonus
 					let bonusDays = getBonusDays ? getBonusDays() : 0;
 					let giftDays = getGiftDays ? getGiftDays() : 0;
 					let result = Calculation.calculateMonthlyTotal(data, bonusDays, giftDays);
-					Debug.logError('yo');
 					label.set_text(result.text);
 
 					let current_time = GLib.DateTime.new_now_local();
