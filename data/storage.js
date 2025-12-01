@@ -58,8 +58,8 @@ const Debug = {
 };
 
 // Storage file path
-const STORAGE_DIR = getExtensionDir() + '/data';
-const STORAGE_FILE = GLib.build_filenamev([STORAGE_DIR, '.saved_days.json']);
+const STORAGE_DIR = getExtensionDir() + '/utils';
+const STORAGE_FILE = GLib.build_filenamev([STORAGE_DIR, 'saved_days.json']);
 
 // Default colors
 const DEFAULT_START_COLOR = '#ef4444';

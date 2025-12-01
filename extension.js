@@ -56,7 +56,6 @@ class LogWidget {
 
 		this.updateManager = new Updater.UpdateManager();
 
-		// Run check immediately or after a small delay
 		this.checkTimeout = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, 60, () => {
 			this.updateManager.checkForUpdates((count) => {
 				this._updateAvailable = true;
@@ -197,7 +196,6 @@ class LogWidget {
 			}
 		});
 
-		// FIX: Add y_align for vertical centering
 		let countLabel = new St.Label({
 			text: String(this.bonusDays),
 			style: 'font-size: 14px; font-weight: bold; text-align: center; padding: 0 8px;',
@@ -270,7 +268,6 @@ class LogWidget {
 			}
 		});
 
-		// FIX: Add y_align for vertical centering
 		let countLabel = new St.Label({
 			text: String(this.giftDays),
 			style: 'font-size: 14px; font-weight: bold; text-align: center; padding: 0 8px;',
@@ -309,13 +306,24 @@ class LogWidget {
 
 	_manualRefresh() {
 		Debug.logDebug(`Menu: refresh selected`);
+
 		let current_time = GLib.DateTime.new_now_local();
-		this._label.set_text(`Manual refresh at ${current_time.format("%H:%M:%S")}`);
+		let timeStr = '??:??:??';
+
+		if (current_time) {
+			timeStr = current_time.format("%H:%M:%S");
+			current_time.unref();
+		} else {
+			Debug.logError('GLib.DateTime.new_now_local() returned null in _manualRefresh');
+		}
+
+		this._label.set_text(`Manual refresh at ${timeStr}`);
 
 		setTimeout(() => {
 			this._scrapMethod();
 		}, 1000);
 	}
+
 
 	_checkCookieValidity(cookieValue) {
 		return new Promise((resolve, reject) => {
@@ -323,17 +331,15 @@ class LogWidget {
 			let session = new Soup.Session();
 			let message = Soup.Message.new(
 				'GET',
-				`https://profile.intra.42.fr/users/${username}/locations_stats.json`
+				`https://translate.intra.42.fr/users/${username}/locations_stats.json`
 			);
 
-			// Add the cookie header
 			message.request_headers.append('Cookie', `_intra_42_session_production=${cookieValue}`);
 
 			session.queue_message(message, (session, message) => {
 				if (message.status_code === 200) {
 					try {
 						let response = message.response_body.data;
-						// Optional: validate response content if needed
 						resolve(true);
 					} catch (e) {
 						resolve(false);
@@ -356,14 +362,12 @@ class LogWidget {
 			])
 		);
 
-		// No cookie file exists - need to login
 		if (!cookieFile.query_exists(null)) {
 			Debug.logInfo('No cookie file found, opening login');
 			this._executeCookieCapture();
 			return;
 		}
 
-		// Cookie file exists - validate it
 		try {
 			let [success, contents] = cookieFile.load_contents(null);
 			if (!success || contents.length === 0) {
@@ -380,7 +384,6 @@ class LogWidget {
 				return;
 			}
 
-			// Test cookie validity
 			this._label.set_text('Validating cookie...');
 			const testUrl = `https://translate.intra.42.fr/users/${username}/locations_stats.json`;
 			let session = new Soup.Session();
@@ -391,14 +394,12 @@ class LogWidget {
 				Debug.logInfo(`Cookie validation status: ${msg.status_code}`);
 
 				if (msg.status_code === 200) {
-					// Cookie is valid - use it
 					Debug.logSuccess(`Cookie valid, using existing session`);
 					this._intra42Cookie = cookieValue;
 					this._label.set_text(`✓ Logged in`);
 					this._label.set_style('color: #10b981; font-weight: 600;');
 					this._scrapMethod();
 				} else {
-					// Cookie invalid/expired - need to login
 					Debug.logInfo(`Cookie invalid (status ${msg.status_code}), opening login`);
 					this._label.set_text('Cookie expired, logging in...');
 					this._label.set_style('color: #ef4444; font-weight: 600;');
@@ -416,10 +417,9 @@ class LogWidget {
 	}
 
 	_onLoginClicked() {
-		// This is now ONLY called manually from the menu
 		Debug.logInfo('Manual login requested');
 		this._label.set_text('Starting login...');
-		Data.deleteCookiesFile();  // Clear old cookie
+		Data.deleteCookiesFile();
 		this._executeCookieCapture();
 	}
 
@@ -433,13 +433,12 @@ class LogWidget {
 		]);
 
 		try {
-			// Use spawn_async with proper environment and flags
 			let [success, pid] = GLib.spawn_async(
-				null, // working directory (null = current)
-				['python3.10', scriptPath], // argv
-				null, // envp (null = inherit parent environment)
+				null,
+				['python3.10', scriptPath],
+				null,
 				GLib.SpawnFlags.SEARCH_PATH | GLib.SpawnFlags.DO_NOT_REAP_CHILD,
-				null // child setup function
+				null
 			);
 
 			if (success) {
@@ -447,13 +446,11 @@ class LogWidget {
 				this._label.set_text('Login in progress...');
 				this._label.set_style('color: #3b82f6; font-weight: 600;');
 
-				// Monitor child process
 				GLib.child_watch_add(GLib.PRIORITY_DEFAULT, pid, (pid, status) => {
 					Debug.logInfo(`Cookie capture process exited with status ${status}`);
 					GLib.spawn_close_pid(pid);
 				});
 
-				// Start checking for cookie file
 				this._checkCookieFileRepeatedly();
 			} else {
 				Debug.logError('Failed to spawn cookie capture process');
@@ -470,7 +467,7 @@ class LogWidget {
 
 	_checkCookieFileRepeatedly() {
 		let attempts = 0;
-		const maxAttempts = 150; // 150 * 2 seconds = 5 minutes
+		const maxAttempts = 150;
 
 		this._cookieCheckInterval = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, 2, () => {
 			attempts++;
@@ -495,11 +492,9 @@ class LogWidget {
 							this._intra42Cookie = cookieValue;
 							this._label.set_text('✓ Logged In');
 							this._label.set_style('color: #10b981; font-weight: 600;');
-
-							// Trigger your scraping method or whatever comes next
 							this._scrapMethod();
 
-							return false; // Stop interval
+							return false;
 						}
 					}
 				} catch (e) {
@@ -511,11 +506,11 @@ class LogWidget {
 				Debug.logError('Cookie capture timeout');
 				this._label.set_text('Login Timeout');
 				this._label.set_style('color: #ef4444; font-weight: 600;');
-				return false; // Stop interval
+				return false;
 			}
 
 			Debug.logInfo(`Checking for cookie file... attempt ${attempts}/${maxAttempts}`);
-			return true; // Continue interval
+			return true;
 		});
 	}
 
@@ -581,9 +576,10 @@ class LogWidget {
 			(data) => {
 				this._cachedData = data;
 				Debug.logInfo('Data cached for instant updates');
-				this._setupStorageMonitoring();
-				// this._updateLogtime();
+				// this._setupStorageMonitoring();
+				this._updateLogtime();
 			}
+
 		);
 	}
 
@@ -592,8 +588,7 @@ class LogWidget {
 			Debug.logWarn("No cached data yet, will update on next refresh...");
 			return;
 		}
-
-		// Use new formatTimeDisplay function with user preferences
+		Debug.logError(this._cachedData);
 		let result = Calculation.formatTimeDisplay(
 			this._cachedData,
 			this.bonusDays || 0,
@@ -604,7 +599,6 @@ class LogWidget {
 
 		this._label.set_text(result.text);
 
-		// Calculate gradient color from red (0h) to green (maxhours)
 		let percentage = Math.min(1.0, Math.max(0.0, result.totalHours / result.workingHours));
 		let color = this._interpolateColor(percentage);
 
@@ -620,7 +614,6 @@ class LogWidget {
 
 
 	_interpolateColor(percentage) {
-		// Parse hex colors to RGB
 		let parseHex = (hex) => {
 			let r = parseInt(hex.slice(1, 3), 16);
 			let g = parseInt(hex.slice(3, 5), 16);
@@ -636,7 +629,6 @@ class LogWidget {
 		let r, g, b;
 
 		if (percentage < 1.0) {
-			// Gradient from startColor to endColor: 0% to 100%
 			let startRGB = parseHex(this.startColor);
 			let endRGB = parseHex(this.endColor);
 
@@ -646,7 +638,6 @@ class LogWidget {
 			g = startRGB.g + (endRGB.g - startRGB.g) * easedPercentage;
 			b = startRGB.b + (endRGB.b - startRGB.b) * easedPercentage;
 		} else {
-			// Use aheadColor for >100%
 			let aheadRGB = parseHex(this.aheadColor);
 			r = aheadRGB.r;
 			g = aheadRGB.g;

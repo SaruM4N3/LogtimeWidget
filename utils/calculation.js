@@ -83,31 +83,43 @@ function addDaysToDate(dateStr, days) {
  */
 function calculateWorkingDaysInMonth() {
     let now = GLib.DateTime.new_now_local();
+    
+    if (!now) {
+        Debug.logError('GLib.DateTime.new_now_local() returned null in calculateWorkingDaysInMonth');
+        return 20;
+    }
+    
     let year = now.get_year();
     let month = now.get_month();
     
-    // Get public holidays for this year
+    // Get holidays
     let holidays = getFrenchPublicHolidays(year);
     let holidaySet = new Set(holidays);
     
-    // Get number of days in current month
-    let daysInMonth = GLib.DateTime.new_local(year, month + 1, 1, 0, 0, 0).add_days(-1).get_day_of_month();
+    // Use JavaScript Date to get days in month (works correctly for December)
+    let jsDate = new Date(year, month, 0); // month is 1-indexed in GLib, but 0-indexed in JS
+    let daysInMonth = jsDate.getDate();
     
     let workingDays = 0;
     
     for (let day = 1; day <= daysInMonth; day++) {
         let date = GLib.DateTime.new_local(year, month, day, 0, 0, 0);
-        let dayOfWeek = date.get_day_of_week(); // 1 = Monday, 7 = Sunday
+        if (!date) continue;
+        
+        let dayOfWeek = date.get_day_of_week();
         let dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
         
-        // Count if it's Monday-Friday (1-5) and not a holiday
         if (dayOfWeek >= 1 && dayOfWeek <= 5 && !holidaySet.has(dateStr)) {
             workingDays++;
         }
+        
+        date.unref();
     }
     
+    now.unref();
     return workingDays;
 }
+
 
 /**
  * Calculate total logged time (hours and minutes) from the beginning of the current month.
@@ -118,24 +130,23 @@ function calculateWorkingDaysInMonth() {
  * @returns {Object} An object with text, isOnTrack, totalHours, totalMinutes, workingHours
  */
 function calculateMonthlyTotal(data, bonusDays = 0, giftDays = 0) {
-    let now = GLib.DateTime.new_now_local();
-    let firstOfMonth = GLib.DateTime.new_local(
-        now.get_year(),
-        now.get_month(),
-        1,
-        0, 0, 0
-    );
+    Debug.logInfo('=== calculateMonthlyTotal START ===');
+    
+    // Use JavaScript Date instead of GLib to avoid null issues
+    let now = new Date();
+    let currentYear = now.getFullYear();
+    let currentMonth = now.getMonth() + 1; // JS months are 0-indexed
+    
+    Debug.logInfo(`Current date: ${currentYear}-${String(currentMonth).padStart(2, '0')}`);
 
     let totalSeconds = 0;
 
     for (let dateStr in data) {
         let y = parseInt(dateStr.slice(0, 4));
         let m = parseInt(dateStr.slice(5, 7));
-        let d = parseInt(dateStr.slice(8, 10));
-
-        let entryDate = GLib.DateTime.new_local(y, m, d, 0, 0, 0);
-
-        if (entryDate.compare(firstOfMonth) >= 0) {
+        
+        // Only count entries from current month/year
+        if (y === currentYear && m === currentMonth) {
             let timeParts = data[dateStr].split(':');
             if (timeParts.length >= 3) {
                 let hours = parseInt(timeParts[0]);
@@ -146,14 +157,13 @@ function calculateMonthlyTotal(data, bonusDays = 0, giftDays = 0) {
         }
     }
 
-    // Add bonus days (7 hours = 25200 seconds each)
+    // Add bonus days
     totalSeconds += bonusDays * 7 * 3600;
 
     let totalHours = Math.floor(totalSeconds / 3600);
     let remainingSeconds = totalSeconds % 3600;
     let totalMinutes = Math.floor(remainingSeconds / 60);
 
-    // Calculate required working hours: (workingDays - giftDays) * 7
     let workingDays = calculateWorkingDaysInMonth();
     let effectiveWorkingDays = Math.max(0, workingDays - giftDays);
     let workingHours = effectiveWorkingDays * 7;
@@ -164,7 +174,8 @@ function calculateMonthlyTotal(data, bonusDays = 0, giftDays = 0) {
 
     let pad = (num) => num.toString().padStart(2, '0');
     
-    // Return object with comprehensive data
+    Debug.logInfo('=== calculateMonthlyTotal END ===');
+    
     return {
         text: `${totalHours}h${pad(totalMinutes)}/${workingHours}h`,
         isOnTrack: totalHours >= workingHours,
