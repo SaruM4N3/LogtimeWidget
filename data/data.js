@@ -134,7 +134,7 @@ function startPeriodicRefresh(label, apiUrl, token, intervalSeconds, getBonusDay
 	});
 }
 
-function scrapedPeriodicRefresh(label, session_cookie, intervalSeconds, getBonusDays, getGiftDays, onDataReceived) {
+function scrapedPeriodicRefresh(label, session_cookie, intervalSeconds, getShowMinutes, getDisplayFormat, getBonusDays, getGiftDays, onDataReceived) {
 	function refresh() {
 		try {
 			get_scraped_data(session_cookie, (data) => {
@@ -148,9 +148,13 @@ function scrapedPeriodicRefresh(label, session_cookie, intervalSeconds, getBonus
 					if (onDataReceived)
 						onDataReceived(data);
 
+					let showMinutes = getShowMinutes ? getShowMinutes() : 0;
+					let displayFormat = getDisplayFormat ? getDisplayFormat() : 0;
+					Debug.logDebug(displayFormat);
 					let bonusDays = getBonusDays ? getBonusDays() : 0;
 					let giftDays = getGiftDays ? getGiftDays() : 0;
-					let result = Calculation.calculateMonthlyTotal(data, bonusDays, giftDays);
+					let result = Calculation.formatTimeDisplay(data, bonusDays, giftDays, showMinutes, displayFormat);
+					Debug.logDebug(result.text);
 					label.set_text(result.text);
 
 					let current_time = GLib.DateTime.new_now_local();
@@ -162,7 +166,7 @@ function scrapedPeriodicRefresh(label, session_cookie, intervalSeconds, getBonus
 						Debug.logError('GLib.DateTime.new_now_local() returned null');
 					}
 
-					Debug.logInfo(
+					Debug.logSuccess(
 						`[${timeLabel}] Refreshed: ${result.text} (${result.isOnTrack ? 'ON TRACK' : 'BEHIND'})`
 					);
 				} catch (e) {

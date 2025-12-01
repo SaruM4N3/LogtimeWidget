@@ -26,10 +26,10 @@ function getFrenchPublicHolidays(year) {
     // Calculate Easter (Pâques) and related holidays
     let easter = calculateEaster(year);
     holidays.push(easter); // Lundi de Pâques (Easter Monday)
-    
+
     let ascension = addDaysToDate(easter, 39); // Ascension (39 days after Easter)
     holidays.push(ascension);
-    
+
     let pentecost = addDaysToDate(easter, 50); // Lundi de Pentecôte (50 days after Easter)
     holidays.push(pentecost);
 
@@ -54,11 +54,11 @@ function calculateEaster(year) {
     let m = Math.floor((a + 11 * h + 22 * l) / 451);
     let month = Math.floor((h + l - 7 * m + 114) / 31);
     let day = ((h + l - 7 * m + 114) % 31) + 1;
-    
+
     // Add 1 day for Easter Monday
     let easterSunday = GLib.DateTime.new_local(year, month, day, 0, 0, 0);
     let easterMonday = easterSunday.add_days(1);
-    
+
     return `${year}-${String(easterMonday.get_month()).padStart(2, '0')}-${String(easterMonday.get_day_of_month()).padStart(2, '0')}`;
 }
 
@@ -68,9 +68,9 @@ function calculateEaster(year) {
 function addDaysToDate(dateStr, days) {
     let parts = dateStr.split('-');
     let date = GLib.DateTime.new_local(
-        parseInt(parts[0]), 
-        parseInt(parts[1]), 
-        parseInt(parts[2]), 
+        parseInt(parts[0]),
+        parseInt(parts[1]),
+        parseInt(parts[2]),
         0, 0, 0
     );
     let newDate = date.add_days(days);
@@ -83,36 +83,36 @@ function addDaysToDate(dateStr, days) {
  */
 function calculateWorkingDaysInMonth() {
     let now = GLib.DateTime.new_now_local();
-    
+
     if (!now) {
         Debug.logError('GLib.DateTime.new_now_local() returned null in calculateWorkingDaysInMonth');
         return 20;
     }
-    
+
     let year = now.get_year();
     let month = now.get_month();
-    
+
     // Get holidays
     let holidays = getFrenchPublicHolidays(year);
     let holidaySet = new Set(holidays);
-    
+
     let jsDate = new Date(year, month, 0);
     let daysInMonth = jsDate.getDate();
-    
+
     let workingDays = 0;
-    
+
     for (let day = 1; day <= daysInMonth; day++) {
         let date = GLib.DateTime.new_local(year, month, day, 0, 0, 0);
         if (!date) continue;
-        
+
         let dayOfWeek = date.get_day_of_week();
         let dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-        
+
         if (dayOfWeek >= 1 && dayOfWeek <= 5 && !holidaySet.has(dateStr)) {
             workingDays++;
         }
     }
-    
+
     return workingDays;
 }
 
@@ -127,12 +127,12 @@ function calculateWorkingDaysInMonth() {
  */
 function calculateMonthlyTotal(data, bonusDays = 0, giftDays = 0) {
     Debug.logInfo('=== calculateMonthlyTotal START ===');
-    
+
     // Use JavaScript Date instead of GLib to avoid null issues
     let now = new Date();
     let currentYear = now.getFullYear();
     let currentMonth = now.getMonth() + 1; // JS months are 0-indexed
-    
+
     Debug.logInfo(`Current date: ${currentYear}-${String(currentMonth).padStart(2, '0')}`);
 
     let totalSeconds = 0;
@@ -140,7 +140,7 @@ function calculateMonthlyTotal(data, bonusDays = 0, giftDays = 0) {
     for (let dateStr in data) {
         let y = parseInt(dateStr.slice(0, 4));
         let m = parseInt(dateStr.slice(5, 7));
-        
+
         // Only count entries from current month/year
         if (y === currentYear && m === currentMonth) {
             let timeParts = data[dateStr].split(':');
@@ -169,9 +169,9 @@ function calculateMonthlyTotal(data, bonusDays = 0, giftDays = 0) {
     Debug.logInfo(`Required working hours: ${workingHours}h`);
 
     let pad = (num) => num.toString().padStart(2, '0');
-    
+
     Debug.logInfo('=== calculateMonthlyTotal END ===');
-    
+
     return {
         text: `${totalHours}h${pad(totalMinutes)}/${workingHours}h`,
         isOnTrack: totalHours >= workingHours,
@@ -196,29 +196,29 @@ function calculateMonthlyTotal(data, bonusDays = 0, giftDays = 0) {
 function formatTimeDisplay(data, bonusDays, giftDays, showMinutes = true, displayFormat = 'ratio') {
     let result = calculateMonthlyTotal(data, bonusDays, giftDays);
     let pad = (num) => num.toString().padStart(2, '0');
-    
+
     if (displayFormat === 'remaining') {
         // Calculate remaining hours needed
         let remainingSeconds = (result.workingHours * 3600) - result.totalSeconds;
         let remainingHours = Math.floor(remainingSeconds / 3600);
         let remainingMinutes = Math.floor((remainingSeconds % 3600) / 60);
-        
+
         // If ahead of schedule, show positive hours
         let isAhead = remainingSeconds < 0;
         let absHours = Math.abs(remainingHours);
         let absMinutes = Math.abs(remainingMinutes);
-        
+
         let text;
         if (showMinutes) {
-            text = isAhead 
-                ? `+${absHours}h${pad(absMinutes)} above!` 
+            text = isAhead
+                ? `+${absHours}h${pad(absMinutes)} above!`
                 : `Remaining: ${absHours}h${pad(absMinutes)}`;
         } else {
-            text = isAhead 
-                ? `+${absHours}h above!` 
+            text = isAhead
+                ? `+${absHours}h above!`
                 : `Remaining: ${absHours}h`;
         }
-        
+        Debug.logDebug(text);
         return {
             text: text,
             isOnTrack: isAhead,
@@ -234,7 +234,7 @@ function formatTimeDisplay(data, bonusDays, giftDays, showMinutes = true, displa
         } else {
             text = `${result.totalHours}h/${result.workingHours}h`;
         }
-        
+        Debug.logDebug(text);
         return {
             text: text,
             isOnTrack: result.isOnTrack,
@@ -268,14 +268,14 @@ function formatTime(hours, minutes, showMinutes = true) {
  */
 function calculateRemainingTime(data, bonusDays, giftDays) {
     let result = calculateMonthlyTotal(data, bonusDays, giftDays);
-    
+
     let remainingSeconds = (result.workingHours * 3600) - result.totalSeconds;
     let isAhead = remainingSeconds < 0;
-    
+
     let absRemainingSeconds = Math.abs(remainingSeconds);
     let remainingHours = Math.floor(absRemainingSeconds / 3600);
     let remainingMinutes = Math.floor((absRemainingSeconds % 3600) / 60);
-    
+
     return {
         remainingHours: remainingHours,
         remainingMinutes: remainingMinutes,

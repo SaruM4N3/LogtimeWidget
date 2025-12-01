@@ -569,16 +569,16 @@ class LogWidget {
 		this._refreshTimeoutId = Data.scrapedPeriodicRefresh(
 			this._label,
 			this._intra42Cookie,
-			60,
+			10,
+			() => this.showMinutes || true,
+			() => this.displayFormat || "ratio",
 			() => this.bonusDays || 0,
 			() => this.giftDays || 0,
 			(data) => {
 				this._cachedData = data;
 				Debug.logInfo('Data cached for instant updates');
-				// this._setupStorageMonitoring();
 				this._updateLogtime();
 			}
-
 		);
 	}
 
@@ -587,7 +587,6 @@ class LogWidget {
 			Debug.logWarn("No cached data yet, will update on next refresh...");
 			return;
 		}
-		Debug.logError(this._cachedData);
 		let result = Calculation.formatTimeDisplay(
 			this._cachedData,
 			this.bonusDays || 0,
@@ -604,7 +603,7 @@ class LogWidget {
 		this._label.set_style(`color: ${color}; font-weight: 600;`);
 		let displayText = result.text;
 
-		Debug.logSuccess(this._updateAvailable);
+		Debug.logDebug(`Update available ${this._updateAvailable}`);
 		if (this._updateAvailable) {
 			displayText += "  [UPDATE]";
 		}

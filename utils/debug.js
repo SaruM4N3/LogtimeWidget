@@ -22,10 +22,30 @@ function cLog(type, message) {
         debug: '[DEBUG]',
     };
 
+    let caller = 'unknown';
+    try {
+        const stack = new Error().stack;
+        const stackLines = stack.split('\n');
+        if (stackLines.length > 2) {
+            const callerLine = stackLines[2];
+            const match = callerLine.match(/(.+)@(.+):(\d+):(\d+)/);
+            if (match) {
+                const functionName = match[1].trim();
+                const file = match[2].split('/').pop(); // Get just filename
+                const lineNum = match[3];
+                caller = `${functionName}@${file}:${lineNum}`;
+            } else {
+                caller = callerLine.trim();
+            }
+        }
+    } catch (e) {
+    }
+
     let color = COLORS[type] || RESET;
     let label = LABEL[type] || '[LOG]';
-    log(`${color}[${Me.metadata.name}] ${label} ${message}${RESET}`);
+    log(`${color}[${Me.metadata.name}] ${label} [${caller}] ${message}${RESET}`);
 }
+
 
 function logInfo(msg) { cLog('info', msg); }
 function logWarn(msg) { cLog('warn', msg); }
