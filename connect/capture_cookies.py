@@ -7,7 +7,6 @@ from selenium.webdriver.chrome.service import Service as ChromeService
 from webdriver_manager.chrome import ChromeDriverManager
 
 import subprocess
-import configparser
 import shutil
 import os
 import time
@@ -20,56 +19,6 @@ def get_cpu_count():
         return int(output)
     except:
         return 1
-
-def get_default_browser_binary():
-    try:
-        # 1. Ask xdg-settings
-        try:
-            cmd = ['xdg-settings', 'get', 'default-web-browser']
-            desktop_filename = subprocess.check_output(cmd, text=True).strip()
-        except:
-            desktop_filename = ""
-
-        # 2. Fallback checks (Removed Firefox)
-        if not desktop_filename:
-            if shutil.which("brave"): return shutil.which("brave")
-            if shutil.which("google-chrome"): return shutil.which("google-chrome")
-            if shutil.which("chromium"): return shutil.which("chromium")
-            return None
-
-        # 3. Find desktop file
-        search_paths = [
-            os.path.expanduser('~/.local/share/applications'),
-            '/usr/share/applications',
-            '/usr/local/share/applications',
-            '/var/lib/snapd/desktop/applications'
-        ]
-        
-        desktop_path = None
-        for path in search_paths:
-            candidate = os.path.join(path, desktop_filename)
-            if os.path.exists(candidate):
-                desktop_path = candidate
-                break
-        
-        if not desktop_path:
-            return None
-
-        # 4. Parse Exec
-        config = configparser.ConfigParser(interpolation=None)
-        config.read(desktop_path)
-        
-        if 'Desktop Entry' in config and 'Exec' in config['Desktop Entry']:
-            exec_line = config['Desktop Entry']['Exec']
-            cmd = exec_line.split()[0]
-            if not os.path.isabs(cmd):
-                return shutil.which(cmd)
-            return cmd
-            
-    except Exception as e:
-        print(f"Warning: Could not detect default browser: {e}")
-    
-    return None
 
 def capture_cookies():
     base_dir = os.path.join(os.path.expanduser("~"), ".local/share/gnome-shell/extensions/LogtimeWidget@zsonie", "utils")
@@ -93,49 +42,51 @@ def capture_cookies():
     driver = None
     driver_pid = None
     
-    # CPU Check
+    # --- CPU CHECK ---
     cpu_cores = get_cpu_count()
+    # cpu_cores = 4
     print(f"Detected CPU Cores: {cpu_cores}")
     
-    # Removed Firefox from priority list
+    # Define Priority List based on Power
     if cpu_cores > 4:
-        fallback_priority = ["/usr/bin/brave", "/usr/bin/google-chrome", "/usr/bin/chromium"]
+        print("High core count: Preferring Brave.")
+        priority_list = [
+            "/usr/bin/brave", 
+            "/usr/bin/brave-browser", 
+            "/usr/bin/google-chrome", 
+            "/usr/bin/chromium",
+            "/usr/bin/chromium-browser"
+        ]
     else:
-        fallback_priority = ["/usr/bin/google-chrome", "/usr/bin/chromium", "/usr/bin/brave"]
+        print("Low core count: Preferring Chrome/Chromium.")
+        priority_list = [
+            "/usr/bin/google-chrome", 
+            "/usr/bin/chromium", 
+            "/usr/bin/chromium-browser",
+            "/usr/bin/brave", 
+            "/usr/bin/brave-browser"
+        ]
 
-    # 1. Default Browser
-    default_bin = get_default_browser_binary()
-    if default_bin:
-        # Ensure we don't accidentally try to use Firefox if it was detected
-        if "firefox" in default_bin.lower():
-            print("Firefox detected as default but support is disabled. Skipping to fallback.")
-        else:
-            print(f"Detected default browser: {default_bin}")
-            try:
-                print("Initializing Chrome/Brave...")
-                options = ChromeOptions()
-                options.binary_location = default_bin
-                service = ChromeService(ChromeDriverManager().install())
-                driver = webdriver.Chrome(service=service, options=options)
-            except Exception as e:
-                print(f"Default browser failed: {e}")
-                driver = None
-
-    # 2. Fallback
-    if not driver:
-        fallback_path = next((p for p in fallback_priority if os.path.exists(p)), None)
-        if fallback_path:
-            print(f"Fallback selected: {fallback_path}")
-            try:
-                options = ChromeOptions()
-                options.binary_location = fallback_path
-                service = ChromeService(ChromeDriverManager().install())
-                driver = webdriver.Chrome(service=service, options=options)
-            except Exception as e:
-                print(f"Fallback failed: {e}")
+    # --- LAUNCH LOGIC ---
+    for browser_path in priority_list:
+        if not os.path.exists(browser_path):
+            continue
+            
+        print(f"Attempting to launch: {browser_path}")
+        try:
+            options = ChromeOptions()
+            options.binary_location = browser_path
+            service = ChromeService(ChromeDriverManager().install())
+            driver = webdriver.Chrome(service=service, options=options)
+            
+            print(f"Successfully launched: {browser_path}")
+            break # Stop loop if successful
+        except Exception as e:
+            print(f"Failed to launch {browser_path}: {e}")
+            driver = None
 
     if not driver:
-        print("CRITICAL ERROR: No browser started.")
+        print("CRITICAL ERROR: No browser could be started.")
         return False
         
     try:
@@ -143,7 +94,7 @@ def capture_cookies():
     except:
         driver_pid = None
 
-    # 3. Automation
+    # --- AUTOMATION ---
     try:
         driver.get("https://profile.intra.42.fr/")
         wait = WebDriverWait(driver, 600)
