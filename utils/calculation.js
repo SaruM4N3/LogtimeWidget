@@ -236,51 +236,52 @@ function formatTimeDisplay(data, bonusDays, giftDays, showMinutes = true, displa
     }
 }
 
-// /**
-//  * Format time as "Xh" or "XhYY" depending on showMinutes
-//  * 
-//  * @param {number} hours - Hours
-//  * @param {number} minutes - Minutes
-//  * @param {boolean} showMinutes - Whether to include minutes
-//  * @returns {string} Formatted time string
-//  */
-// function formatTime(hours, minutes, showMinutes = true) {
-//     let pad = (num) => num.toString().padStart(2, '0');
-//     return showMinutes ? `${hours}h${pad(minutes)}` : `${hours}h`;
-// }
+/**
+ * Format time as "Xh" or "XhYY" depending on showMinutes
+ * 
+ * @param {number} hours - Hours
+ * @param {number} minutes - Minutes
+ * @param {boolean} showMinutes - Whether to include minutes
+ * @returns {string} Formatted time string
+ */
+function formatTime(hours, minutes, showMinutes = true) {
+    let pad = (num) => num.toString().padStart(2, '0');
+    return showMinutes ? `${hours}h${pad(minutes)}` : `${hours}h`;
+}
 
-// /**
-//  * Calculate remaining time (difference between required and current)
-//  * 
-//  * @param {Object} data - The API data object
-//  * @param {number} bonusDays - Number of bonus days
-//  * @param {number} giftDays - Number of gift days
-//  * @returns {Object} Object with remainingHours, remainingMinutes, isAhead
-//  */
-// function calculateRemainingTime(data, bonusDays, giftDays) {
-//     let result = calculateMonthlyTotal(data, bonusDays, giftDays);
+/**
+ * Calculate remaining time (difference between required and current)
+ * 
+ * @param {Object} data - The API data object
+ * @param {number} bonusDays - Number of bonus days
+ * @param {number} giftDays - Number of gift days
+ * @returns {Object} Object with remainingHours, remainingMinutes, isAhead
+ */
+function calculateRemainingTime(data, bonusDays, giftDays) {
+    let result = calculateMonthlyTotal(data, bonusDays, giftDays);
 
-//     let remainingSeconds = (result.workingHours * 3600) - result.totalSeconds;
-//     let isAhead = remainingSeconds < 0;
+    let remainingSeconds = (result.workingHours * 3600) - result.totalSeconds;
+    let isAhead = remainingSeconds < 0;
 
-//     let absRemainingSeconds = Math.abs(remainingSeconds);
-//     let remainingHours = Math.floor(absRemainingSeconds / 3600);
-//     let remainingMinutes = Math.floor((absRemainingSeconds % 3600) / 60);
+    let absRemainingSeconds = Math.abs(remainingSeconds);
+    let remainingHours = Math.floor(absRemainingSeconds / 3600);
+    let remainingMinutes = Math.floor((absRemainingSeconds % 3600) / 60);
 
-//     return {
-//         remainingHours: remainingHours,
-//         remainingMinutes: remainingMinutes,
-//         isAhead: isAhead,
-//         totalHours: result.totalHours,
-//         totalMinutes: result.totalMinutes,
-//         workingHours: result.workingHours
-//     };
-// }
+    return {
+        remainingHours: remainingHours,
+        remainingMinutes: remainingMinutes,
+        isAhead: isAhead,
+        totalHours: result.totalHours,
+        totalMinutes: result.totalMinutes,
+        workingHours: result.workingHours
+    };
+}
 
 var Calculation = {
     calculateMonthlyTotal,
     calculateWorkingDaysInMonth,
     getFrenchPublicHolidays,
     formatTimeDisplay,
-    // calculateRemainingTime,
+    formatTime,
+    calculateRemainingTime,
 };
