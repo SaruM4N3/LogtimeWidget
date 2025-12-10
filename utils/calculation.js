@@ -190,14 +190,30 @@ function calculateMonthlyTotal(data, bonusDays = 0, giftDays = 0) {
  * @param {number} bonusDays - Number of bonus days
  * @param {number} giftDays - Number of gift days
  * @param {boolean} showMinutes - Whether to show minutes
- * @param {string} displayFormat - 'ratio' or 'remaining'
+ * @param {string} displayFormat - 'ratio' or 'remaining' or 'all'
  * @returns {Object} Formatted display object with text and isOnTrack
  */
 function formatTimeDisplay(data, bonusDays, giftDays, showMinutes = true, displayFormat = 'ratio') {
     let result = calculateMonthlyTotal(data, bonusDays, giftDays);
     let pad = (num) => num.toString().padStart(2, '0');
 
-    if (displayFormat === 'remaining') {
+    if (displayFormat === 'all') {
+        
+        let text;
+        if (showMinutes) {
+            text = `${result.totalHours}h${pad(result.totalMinutes)}/${result.workingHours}h`;
+        } else {
+            text = `${result.totalHours}h/${result.workingHours}h`;
+        }
+        return {
+            text: `${text} | ${formatTimeDisplay(data,bonusDays, giftDays, showMinutes, 'remaining').text}` ,
+            isOnTrack: result.isOnTrack,
+            totalHours: result.totalHours,
+            totalMinutes: result.totalMinutes,
+            workingHours: result.workingHours
+        };
+    }
+    else if (displayFormat === 'remaining') {
         // Calculate remaining hours needed
         let remainingSeconds = (result.workingHours * 3600) - result.totalSeconds;
         let remainingHours = Math.floor(remainingSeconds / 3600);

@@ -59,9 +59,11 @@ function fillPreferencesWindow(window) {
         subtitle: 'Choose how to display logtime information',
     });
 
+    const displayFormatType = ['ratio', 'remaining', 'all']
+
     const displayFormatCombo = new Gtk.DropDown({
-        model: Gtk.StringList.new(['Current / Needed', 'Remaining Hours']),
-        selected: saved.displayFormat === 'ratio' ? 0 : 1,
+        model: Gtk.StringList.new(['Current / Needed', 'Remaining Hours', 'Combined']),
+        selected: displayFormatType.indexOf(saved.displayFormat),
         valign: Gtk.Align.CENTER,
     });
 
@@ -189,7 +191,7 @@ function fillPreferencesWindow(window) {
             bonusSpinButton.get_value(),
             giftSpinButton.get_value(),
             showMinutesSwitch.get_active(),
-            displayFormatCombo.get_selected() === 0 ? 'ratio' : 'remaining',
+            displayFormatType[displayFormatCombo.get_selected()],
             rgbaToHex(startColorButton.get_rgba()),
             rgbaToHex(endColorButton.get_rgba()),
             rgbaToHex(aheadColorButton.get_rgba())
