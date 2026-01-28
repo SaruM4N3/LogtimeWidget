@@ -11,12 +11,12 @@ YELLOW='\033[1;33m'
 NC='\033[0m'
 
 echo -e "${GREEN}========================================${NC}"
-echo -e "${GREEN}   Logtime Widget Installer (Dev Mode)  ${NC}"
+echo -e "${GREEN}   Logtime Widget Installer             ${NC}"
 echo -e "${GREEN}========================================${NC}"
 echo ""
 
 EXTENSION_UUID="LogtimeWidget@zsonie"
-SOURCE_DIR="$(pwd)"  # this repo
+SOURCE_DIR="$(pwd)"
 INSTALL_DIR="$HOME/.local/share/gnome-shell/extensions/$EXTENSION_UUID"
 
 echo -e "${YELLOW}Checking dependencies...${NC}"
@@ -28,7 +28,6 @@ mkdir -p "$INSTALL_DIR"
 
 echo -e "${YELLOW}Copying files to $INSTALL_DIR...${NC}"
 cp -r "$SOURCE_DIR/"* "$INSTALL_DIR/"
-# Copy .git folder (REQUIRED for updater)
 if [ -d "$SOURCE_DIR/.git" ]; then
     cp -r "$SOURCE_DIR/.git" "$INSTALL_DIR/"
 fi
@@ -44,6 +43,8 @@ echo -e "${GREEN}========================================${NC}"
 echo -e "${GREEN}       Installation Complete!           ${NC}"
 echo -e "${GREEN}========================================${NC}"
 
-killall -3 gnome-shell
-sleep 1
-gnome-extensions enable "$EXTENSION_UUID"
+# Safe GNOME Shell restart (X11):
+if [ "$XDG_SESSION_TYPE" = "x11" ]; then
+    busctl --user call org.gnome.Shell /org/gnome/Shell \
+        org.gnome.Shell Eval s 'Meta.restart("Restarting…")'
+fi

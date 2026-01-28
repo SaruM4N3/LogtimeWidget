@@ -8,36 +8,23 @@ const Me = ExtensionUtils.getCurrentExtension();
 const { Debug } = Me.imports.utils.debug;
 
 /**
- * French public holidays (jours fériés) - returns dates for a given year
+ * Add days to a date string (YYYY-MM-DD format)
  */
-function getFrenchPublicHolidays(year) {
-    // Fixed holidays
-    let holidays = [
-        `${year}-01-01`, // Jour de l'an (New Year's Day)
-        `${year}-05-01`, // Fête du Travail (Labor Day)
-        `${year}-05-08`, // Victoire 1945 (Victory in Europe Day)
-        `${year}-07-14`, // Fête nationale (Bastille Day)
-        `${year}-08-15`, // Assomption (Assumption of Mary)
-        `${year}-11-01`, // Toussaint (All Saints' Day)
-        `${year}-11-11`, // Armistice 1918 (Armistice Day)
-        `${year}-12-25`, // Noël (Christmas Day)
-    ];
-
-    // Calculate Easter (Pâques) and related holidays
-    let easter = calculateEaster(year);
-    holidays.push(easter); // Lundi de Pâques (Easter Monday)
-
-    let ascension = addDaysToDate(easter, 39); // Ascension (39 days after Easter)
-    holidays.push(ascension);
-
-    let pentecost = addDaysToDate(easter, 50); // Lundi de Pentecôte (50 days after Easter)
-    holidays.push(pentecost);
-
-    return holidays;
+function addDaysToDate(dateStr, days) {
+    let parts = dateStr.split('-');
+    let date = GLib.DateTime.new_local(
+        parseInt(parts[0]),
+        parseInt(parts[1]),
+        parseInt(parts[2]),
+        0, 0, 0
+    );
+    let newDate = date.add_days(days);
+    return `${newDate.get_year()}-${String(newDate.get_month()).padStart(2, '0')}-${String(newDate.get_day_of_month()).padStart(2, '0')}`;
 }
 
 /**
  * Calculate Easter Monday date using Meeus/Jones/Butcher algorithm
+ * Dont look at me like that it's clearly not my function
  */
 function calculateEaster(year) {
     let a = year % 19;
@@ -63,18 +50,30 @@ function calculateEaster(year) {
 }
 
 /**
- * Add days to a date string (YYYY-MM-DD format)
+ * French public holidays (jours fériés) - returns dates for a given year
  */
-function addDaysToDate(dateStr, days) {
-    let parts = dateStr.split('-');
-    let date = GLib.DateTime.new_local(
-        parseInt(parts[0]),
-        parseInt(parts[1]),
-        parseInt(parts[2]),
-        0, 0, 0
-    );
-    let newDate = date.add_days(days);
-    return `${newDate.get_year()}-${String(newDate.get_month()).padStart(2, '0')}-${String(newDate.get_day_of_month()).padStart(2, '0')}`;
+function getFrenchPublicHolidays(year) {
+    let holidays = [
+        `${year}-01-01`, // Jour de l'an (New Year's Day)
+        `${year}-05-01`, // Fête du Travail (Labor Day)
+        `${year}-05-08`, // Victoire 1945 (Victory in Europe Day)
+        `${year}-07-14`, // Fête nationale (Bastille Day)
+        `${year}-08-15`, // Assomption (Assumption of Mary)
+        `${year}-11-01`, // Toussaint (All Saints' Day)
+        `${year}-11-11`, // Armistice 1918 (Armistice Day)
+        `${year}-12-25`, // Noël (Christmas Day)
+    ];
+
+    let easter = calculateEaster(year);
+    holidays.push(easter); // Lundi de Pâques (Easter Monday)
+
+    let ascension = addDaysToDate(easter, 39); // Ascension (39 days after Easter)
+    holidays.push(ascension);
+
+    let pentecost = addDaysToDate(easter, 50); // Lundi de Pentecôte (50 days after Easter)
+    holidays.push(pentecost);
+
+    return holidays;
 }
 
 /**
@@ -91,14 +90,10 @@ function calculateWorkingDaysInMonth() {
 
     let year = now.get_year();
     let month = now.get_month();
-
-    // Get holidays
     let holidays = getFrenchPublicHolidays(year);
     let holidaySet = new Set(holidays);
-
     let jsDate = new Date(year, month, 0);
     let daysInMonth = jsDate.getDate();
-
     let workingDays = 0;
 
     for (let day = 1; day <= daysInMonth; day++) {
@@ -112,10 +107,8 @@ function calculateWorkingDaysInMonth() {
             workingDays++;
         }
     }
-
     return workingDays;
 }
-
 
 /**
  * Calculate total logged time (hours and minutes) from the beginning of the current month.
@@ -128,7 +121,6 @@ function calculateWorkingDaysInMonth() {
 function calculateMonthlyTotal(data, bonusDays = 0, giftDays = 0) {
     Debug.logInfo('=== calculateMonthlyTotal START ===');
 
-    // Use JavaScript Date instead of GLib to avoid null issues
     let now = new Date();
     let currentYear = now.getFullYear();
     let currentMonth = now.getMonth() + 1; // JS months are 0-indexed
@@ -159,7 +151,6 @@ function calculateMonthlyTotal(data, bonusDays = 0, giftDays = 0) {
     let totalHours = Math.floor(totalSeconds / 3600);
     let remainingSeconds = totalSeconds % 3600;
     let totalMinutes = Math.floor(remainingSeconds / 60);
-
     let workingDays = calculateWorkingDaysInMonth();
     let effectiveWorkingDays = Math.max(0, workingDays - giftDays);
     let workingHours = effectiveWorkingDays * 7;
@@ -227,11 +218,11 @@ function formatTimeDisplay(data, bonusDays, giftDays, showMinutes = true, displa
         let text;
         if (showMinutes) {
             text = isAhead
-                ? `+${absHours}h${pad(absMinutes)} above!`
+                ? `+${absHours - 1}h${pad(absMinutes)} above!`
                 : `Remaining: ${absHours}h${pad(absMinutes)}`;
         } else {
             text = isAhead
-                ? `+${absHours}h above!`
+                ? `+${absHours - 1}h above!`
                 : `Remaining: ${absHours}h`;
         }
         Debug.logDebug(text);
