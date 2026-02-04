@@ -56,8 +56,8 @@ class LogWidget {
 
 		this.updateManager = new Updater.UpdateManager();
 
-		this.checkTimeout = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, 60, () => {
-			this.updateManager.checkForUpdates((count) => {
+		this.checkTimeout = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, 600, () => {
+			this.updateManager._checkForUpdates((count) => {
 				this._updateAvailable = true;
 				this._updateLogtime();
 				if (this.updateItem) {
@@ -192,7 +192,6 @@ class LogWidget {
 				);
 				Debug.logInfo(`Bonus days: ${this.bonusDays}`);
 				this._setupStorageMonitoring();
-				// this._updateLogtime();
 			}
 		});
 
@@ -222,7 +221,6 @@ class LogWidget {
 			);
 			Debug.logInfo(`Bonus days: ${this.bonusDays}`);
 			this._setupStorageMonitoring();
-			// this._updateLogtime();
 		});
 
 		box.add_child(minusBtn);
@@ -264,7 +262,6 @@ class LogWidget {
 				);
 				Debug.logInfo(`Gift days: ${this.giftDays}`);
 				this._setupStorageMonitoring();
-				// this._updateLogtime();
 			}
 		});
 
@@ -294,7 +291,6 @@ class LogWidget {
 			);
 			Debug.logInfo(`Gift days: ${this.giftDays}`);
 			this._setupStorageMonitoring();
-			// this._updateLogtime();
 		});
 
 		box.add_child(minusBtn);
@@ -322,7 +318,6 @@ class LogWidget {
 			this._scrapMethod();
 		}, 1000);
 	}
-
 
 	_checkCookieValidity(cookieValue) {
 		return new Promise((resolve, reject) => {
@@ -536,30 +531,30 @@ class LogWidget {
 		}
 	}
 
-	_apiMethod() {
-		Connect.get_access_token(CLIENT_ID, CLIENT_SECRET, (token) => {
-			if (token) {
-				const apiUrl = `https://api.intra.42.fr/v2/users/${username}/locations_stats`;
-				if (this._refreshTimeoutId) {
-					GLib.source_remove(this._refreshTimeoutId);
-				}
-				this._refreshTimeoutId = Data.startPeriodicRefresh(
-					this._label,
-					apiUrl,
-					token,
-					60,
-					() => this.bonusDays || 0,
-					() => this.giftDays || 0,
-					(data) => {
-						this._cachedData = data;
-						Debug.logInfo('Data cached for instant updates');
-					}
-				);
-			} else {
-				this._label.set_text('Failed to get token.');
-			}
-		});
-	}
+	// _apiMethod() {
+	// 	Connect.get_access_token(CLIENT_ID, CLIENT_SECRET, (token) => {
+	// 		if (token) {
+	// 			const apiUrl = `https://api.intra.42.fr/v2/users/${username}/locations_stats`;
+	// 			if (this._refreshTimeoutId) {
+	// 				GLib.source_remove(this._refreshTimeoutId);
+	// 			}
+	// 			this._refreshTimeoutId = Data.startPeriodicRefresh(
+	// 				this._label,
+	// 				apiUrl,
+	// 				token,
+	// 				60,
+	// 				() => this.bonusDays || 0,
+	// 				() => this.giftDays || 0,
+	// 				(data) => {
+	// 					this._cachedData = data;
+	// 					Debug.logInfo('Data cached for instant updates');
+	// 				}
+	// 			);
+	// 		} else {
+	// 			this._label.set_text('Failed to get token.');
+	// 		}
+	// 	});
+	// }
 
 	_scrapMethod() {
 		if (this._refreshTimeoutId) {
@@ -603,9 +598,9 @@ class LogWidget {
 		this._label.set_style(`color: ${color}; font-weight: 600;`);
 		let displayText = result.text;
 
-		Debug.logDebug(`Update available ${this._updateAvailable}`);
+		Debug.logDebug(`Update available : ${this._updateAvailable}`);
 		if (this._updateAvailable) {
-			displayText += "  [UPDATE]";
+			displayText += "  [UPDATE AVAILABLE]";
 		}
 		Debug.logSuccess(`Updated: ${result.text} [minutes:${this.showMinutes}, format:${this.displayFormat}]`);
 	}

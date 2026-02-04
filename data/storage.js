@@ -13,8 +13,6 @@ try {
 }
 const { Debug } = Me.imports.utils.debug;
 
-
-
 function getExtensionDir() {
     let path;
     if (Me) {
@@ -47,6 +45,18 @@ function ensureStorageDir() {
             Debug.logError(`Failed to create dir: ${e.message}`);
         }
     }
+}
+
+function getDefaults() {
+    return {
+        bonusDays: 0,
+        giftDays: 0,
+        showMinutes: true,
+        displayFormat: 'ratio',
+        startColor: DEFAULT_START_COLOR,
+        endColor: DEFAULT_END_COLOR,
+        aheadColor: DEFAULT_AHEAD_COLOR
+    };
 }
 
 function getCurrentMonth() {
@@ -117,18 +127,6 @@ function loadDays() {
         Debug.logError(`Failed to load days: ${e.message}`);
     }
     return getDefaults();
-}
-
-function getDefaults() {
-    return {
-        bonusDays: 0,
-        giftDays: 0,
-        showMinutes: true,
-        displayFormat: 'ratio',
-        startColor: DEFAULT_START_COLOR,
-        endColor: DEFAULT_END_COLOR,
-        aheadColor: DEFAULT_AHEAD_COLOR
-    };
 }
 
 var MyStorage = {
