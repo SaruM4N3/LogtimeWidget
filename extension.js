@@ -308,6 +308,7 @@ class LogWidget {
 		if (!creds.clientId || !creds.clientSecret) {
 			this._label.set_text('Set API keys in Settings');
 			this._label.set_style('color: #f59e0b; font-weight: 600;');
+			Gio.AppInfo.launch_default_for_uri('https://github.com/SaruM4N3/LogtimeWidget#first-time-setup', null);
 			return;
 		}
 

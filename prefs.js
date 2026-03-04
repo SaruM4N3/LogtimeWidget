@@ -239,12 +239,31 @@ function fillPreferencesWindow(window) {
     resetRow.activatable_widget = resetButton;
     daysGroup.add(resetRow);
 
+    // ===== API Setup Guide Group =====
+    const setupGroup = new Adw.PreferencesGroup({
+        title: 'How to get API credentials',
+    });
+    page.add(setupGroup);
+
+    const setupRow = new Adw.ActionRow({
+        title: 'Setup Guide',
+        subtitle: 'github.com/SaruM4N3/LogtimeWidget#first-time-setup',
+    });
+    const setupButton = new Gtk.Button({
+        label: 'Open',
+        valign: Gtk.Align.CENTER,
+    });
+    setupButton.connect('clicked', () => {
+        Gio.AppInfo.launch_default_for_uri('https://github.com/SaruM4N3/LogtimeWidget#first-time-setup', null);
+    });
+    setupRow.add_suffix(setupButton);
+    setupGroup.add(setupRow);
+
     // ===== API Credentials Group =====
     let savedCreds = MyStorage.loadCredentials();
 
     const credsGroup = new Adw.PreferencesGroup({
         title: 'API Credentials (42 Intra)',
-        description: 'Create an app at profile.intra.42.fr/oauth/applications',
     });
     page.add(credsGroup);
 

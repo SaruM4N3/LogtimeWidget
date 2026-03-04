@@ -45,10 +45,11 @@ The extension uses the **42 API OAuth2** (Client Credentials flow) — no browse
 ### 1. Create an API application on the 42 intranet
 
 1. Go to [https://profile.intra.42.fr/oauth/applications](https://profile.intra.42.fr/oauth/applications)
-2. Click **New Application**
-3. Fill in any name (e.g. `LogtimeWidget`)
-4. Set the redirect URI to `https://github.com/SaruM4N3/LogtimeWidget/` (or any valid URI, it won't be used)
-5. Submit — you'll get a **Client ID** and a **Client Secret**
+2. Click **REGISTER A NEW APP** (top right of the page)
+3. Fill in any name and description(e.g. `LogtimeWidget`)
+4. Fill Application type with "campus tool"
+5. Set the redirect URI to `https://github.com/SaruM4N3/LogtimeWidget/` (or any valid URI, it won't be used)
+6. Submit — you'll get a **Client ID** and a **Client Secret**
 
 ### 2. Enter your credentials in the extension settings
 
