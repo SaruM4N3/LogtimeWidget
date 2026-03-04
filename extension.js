@@ -322,7 +322,7 @@ class LogWidget {
 			this._label.set_text('✓ Connected');
 			this._label.set_style('color: #10b981; font-weight: 600;');
 
-			const apiUrl = `https://api.intra.42.fr/v2/users/${username}/locations_stats`;
+			const apiUrl = `https://api.intra.42.fr/v2/users/${username}/locations?per_page=100`;
 
 			if (this._refreshTimeoutId) {
 				GLib.source_remove(this._refreshTimeoutId);

@@ -137,18 +137,28 @@ function calculateMonthlyTotal(data, bonusDays = 0, giftDays = 0) {
 
     let totalSeconds = 0;
 
-    for (let dateStr in data) {
-        let y = parseInt(dateStr.slice(0, 4));
-        let m = parseInt(dateStr.slice(5, 7));
+    if (Array.isArray(data)) {
+        // /v2/users/{login}/locations format: array of sessions with begin_at / end_at
+        for (let session of data) {
+            let beginAt = new Date(session.begin_at);
+            if (beginAt.getFullYear() !== currentYear || (beginAt.getMonth() + 1) !== currentMonth) continue;
+            let endAt = session.end_at ? new Date(session.end_at) : now;
+            totalSeconds += (endAt - beginAt) / 1000;
+        }
+    } else {
+        // /v2/users/{login}/locations_stats format: { "YYYY-MM-DD": "HH:MM:SS" }
+        for (let dateStr in data) {
+            let y = parseInt(dateStr.slice(0, 4));
+            let m = parseInt(dateStr.slice(5, 7));
 
-        // Only count entries from current month/year
-        if (y === currentYear && m === currentMonth) {
-            let timeParts = data[dateStr].split(':');
-            if (timeParts.length >= 3) {
-                let hours = parseInt(timeParts[0]);
-                let minutes = parseInt(timeParts[1]);
-                let seconds = parseFloat(timeParts[2]);
-                totalSeconds += hours * 3600 + minutes * 60 + seconds;
+            if (y === currentYear && m === currentMonth) {
+                let timeParts = data[dateStr].split(':');
+                if (timeParts.length >= 3) {
+                    let hours = parseInt(timeParts[0]);
+                    let minutes = parseInt(timeParts[1]);
+                    let seconds = parseFloat(timeParts[2]);
+                    totalSeconds += hours * 3600 + minutes * 60 + seconds;
+                }
             }
         }
     }
