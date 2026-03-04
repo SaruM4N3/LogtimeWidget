@@ -19,9 +19,6 @@ EXTENSION_UUID="LogtimeWidget@zsonie"
 SOURCE_DIR="$(pwd)"  # this repo
 INSTALL_DIR="$HOME/.local/share/gnome-shell/extensions/$EXTENSION_UUID"
 
-echo -e "${YELLOW}Checking dependencies...${NC}"
-pip3 install --user selenium psutil webdriver-manager || echo -e "${RED}Warning: Python dependencies failed${NC}"
-
 echo -e "${YELLOW}Cleaning old $INSTALL_DIR...${NC}"
 rm -rf "$INSTALL_DIR"
 mkdir -p "$INSTALL_DIR"
@@ -32,8 +29,6 @@ cp -r "$SOURCE_DIR/"* "$INSTALL_DIR/"
 if [ -d "$SOURCE_DIR/.git" ]; then
     cp -r "$SOURCE_DIR/.git" "$INSTALL_DIR/"
 fi
-chmod +x "$INSTALL_DIR/connect/capture_cookies.py"
-
 # ---------------------------------------------------------
 
 echo -e "${YELLOW}Enabling extension...${NC}"

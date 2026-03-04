@@ -31,6 +31,7 @@ function getExtensionDir() {
 // Storage file path
 const STORAGE_DIR = getExtensionDir() + '/utils';
 const STORAGE_FILE = GLib.build_filenamev([STORAGE_DIR, 'saved_days.json']);
+const CREDENTIALS_FILE = GLib.build_filenamev([STORAGE_DIR, 'credentials.json']);
 
 // Default colors
 const DEFAULT_START_COLOR = '#ef4444';
@@ -131,8 +132,34 @@ function getDefaults() {
     };
 }
 
+function saveCredentials(clientId, clientSecret) {
+    try {
+        ensureStorageDir();
+        let data = JSON.stringify({ clientId: clientId, clientSecret: clientSecret }, null, 2);
+        let file = Gio.File.new_for_path(CREDENTIALS_FILE);
+        file.replace_contents(data, null, false, Gio.FileCreateFlags.REPLACE_DESTINATION, null);
+        Debug.logSuccess(`Saved credentials to ${CREDENTIALS_FILE}`);
+    } catch (e) {
+        Debug.logError(`Failed to save credentials: ${e}`);
+    }
+}
+
+function loadCredentials() {
+    try {
+        let file = Gio.File.new_for_path(CREDENTIALS_FILE);
+        if (!file.query_exists(null)) return { clientId: '', clientSecret: '' };
+        let [success, contents] = file.load_contents(null);
+        if (success) return JSON.parse(ByteArray.toString(contents));
+    } catch (e) {
+        Debug.logError(`Failed to load credentials: ${e}`);
+    }
+    return { clientId: '', clientSecret: '' };
+}
+
 var MyStorage = {
     saveDays: saveDays,
     loadDays: loadDays,
+    saveCredentials: saveCredentials,
+    loadCredentials: loadCredentials,
     STORAGE_FILE: STORAGE_FILE
 };

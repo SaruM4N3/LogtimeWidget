@@ -24,6 +24,13 @@ function rgbaToHex(rgba) {
 function init() {
 }
 
+function saveCredentials(clientIdEntry, clientSecretEntry) {
+    MyStorage.saveCredentials(
+        clientIdEntry.get_text().trim(),
+        clientSecretEntry.get_text().trim()
+    );
+}
+
 function fillPreferencesWindow(window) {
     let saved = MyStorage.loadDays();
 
@@ -231,6 +238,56 @@ function fillPreferencesWindow(window) {
     resetRow.add_suffix(resetButton);
     resetRow.activatable_widget = resetButton;
     daysGroup.add(resetRow);
+
+    // ===== API Credentials Group =====
+    let savedCreds = MyStorage.loadCredentials();
+
+    const credsGroup = new Adw.PreferencesGroup({
+        title: 'API Credentials (42 Intra)',
+        description: 'Create an app at profile.intra.42.fr/oauth/applications',
+    });
+    page.add(credsGroup);
+
+    const clientIdRow = new Adw.ActionRow({
+        title: 'Client ID',
+        subtitle: 'Your 42 API application UID',
+    });
+    const clientIdEntry = new Gtk.Entry({
+        text: savedCreds.clientId || '',
+        placeholder_text: 'u-s4t2ud-...',
+        valign: Gtk.Align.CENTER,
+        hexpand: true,
+    });
+    clientIdRow.add_suffix(clientIdEntry);
+    credsGroup.add(clientIdRow);
+
+    const clientSecretRow = new Adw.ActionRow({
+        title: 'Client Secret',
+        subtitle: 'Your 42 API application secret',
+    });
+    const clientSecretEntry = new Gtk.PasswordEntry({
+        text: savedCreds.clientSecret || '',
+        show_peek_icon: true,
+        valign: Gtk.Align.CENTER,
+        hexpand: true,
+    });
+    clientSecretRow.add_suffix(clientSecretEntry);
+    credsGroup.add(clientSecretRow);
+
+    const saveCredsRow = new Adw.ActionRow({
+        title: 'Save Credentials',
+        subtitle: 'Restart the widget after saving',
+    });
+    const saveCredsButton = new Gtk.Button({
+        label: 'Save',
+        valign: Gtk.Align.CENTER,
+        css_classes: ['suggested-action'],
+    });
+    saveCredsButton.connect('clicked', () => {
+        saveCredentials(clientIdEntry, clientSecretEntry);
+    });
+    saveCredsRow.add_suffix(saveCredsButton);
+    credsGroup.add(saveCredsRow);
 
     // ===== Info Group =====
     const infoGroup = new Adw.PreferencesGroup({
