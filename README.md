@@ -18,165 +18,168 @@ cd LogtimeWidget
 
 ### Manual Installation
 
-Install Python dependencies  
-`pip3 install --user selenium psutil`
-
 Copy extension files
 ```
 git clone https://github.com/SaruM4N3/LogtimeWidget.git
-cd LogtimeWidget/extension
-mkdir -p ~/.local/share/gnome-shell/extensions/LogtimeWidget@zsonie  
-cp -r * ~/.local/share/gnome-shell/extensions/LogtimeWidget@zsonie/
+cd LogtimeWidget
+mkdir -p ~/.local/share/gnome-shell/extensions/LogtimeWidget@zsonie
+cp -r connect data utils extension.js metadata.json prefs.js stylesheet.css \
+    ~/.local/share/gnome-shell/extensions/LogtimeWidget@zsonie/
 ```
 
-Enable the extension  
-`gnome-extensions enable LogtimeWidget@zsonie`
+Enable the extension
+```
+gnome-extensions enable LogtimeWidget@zsonie
+```
 
-Restart GNOME Shell 
-`X11: Press Alt+F2, type 'r', press Enter  
-Wayland: Log out and log back in`
+Restart GNOME Shell
+```
+X11:    Alt+F2 → type 'r' → Enter
+Wayland: log out and log back in
+```
+
+## First Time Setup
+
+The extension uses the **42 API OAuth2** (Client Credentials flow) — no browser, no cookies.
+
+### 1. Create an API application on the 42 intranet
+
+1. Go to [https://profile.intra.42.fr/oauth/applications](https://profile.intra.42.fr/oauth/applications)
+2. Click **New Application**
+3. Fill in any name (e.g. `LogtimeWidget`)
+4. Set the redirect URI to `https://github.com/SaruM4N3/LogtimeWidget/` (or any valid URI, it won't be used)
+5. Submit — you'll get a **Client ID** and a **Client Secret**
+
+### 2. Enter your credentials in the extension settings
+
+1. Click the widget in your top panel → **Settings**
+   *or* run `gnome-extensions prefs LogtimeWidget@zsonie`
+2. In the **API Credentials** section, paste your **Client ID** and **Client Secret**
+3. Click **Save**
+4. The widget will authenticate automatically and start displaying your logtime
+
+Tokens are refreshed automatically every ~2 hours — no action required on your part.
 
 ## Usage
 
-### First Time Setup
-
-1. Brave browser will open automatically  
-2. Log in to your [translate:Intra42] account  
-3. Once logged in, the browser will close and your [translate:logtime] will appear
-4. When the Cookie token will expire, the browser will automatically reopen (every 2-3 days)
-
 ### Menu Options
 
-- **Refresh Manually**: Force an immediate data refresh  
-- **Force Login Manually**: Force an immediate login  
-- **Set Bonus Days**: Add bonus days to your monthly calculation  
-- **Set Gift Days**: Add gift days (exclusions) to your calculation  
-- **Restart Widget**: Restart the extension  
-- **Settings**: Open extension settings
+- **Refresh Manually** — Force an immediate data refresh
+- **Set Bonus Days** — Add bonus days to your monthly calculation (each day = 7h)
+- **Set Gift Days** — Add gift days (reduces required working hours)
+- **Restart Widget** — Restart the extension
+- **Settings** — Open extension preferences
+
+### Display Formats
+
+Choose your preferred format in Settings:
+
+| Format | Example |
+|--------|---------|
+| **Current / Needed** | `47h30/77h` |
+| **Remaining Hours** | `Remaining: 29h30` |
+| **Combined** | `47h30/77h \| Remaining: 29h30` |
+
+You can also toggle **Show Minutes** to hide the minutes and keep the display compact.
 
 ### Configuration
 
-The extension stores your session cookie securely in:  
-`~/.local/share/gnome-shell/extensions/LogtimeWidget@zsonie/.intra42_cookies.json`
-
-Bonus and gift days are stored in:  
-`~/.local/share/gnome-shell/extensions/LogtimeWidget@zsonie/storage.json`
+Credentials and preferences are stored locally in:
+```
+~/.local/share/gnome-shell/extensions/LogtimeWidget@zsonie/storage.json
+```
 
 ## Features
 
-- **Real-time Logtime Tracking**: Displays current monthly hours directly in your GNOME top panel  
-- **Visual Status Indicators**:  
-  - Red: from 0%  
-  - Green: to 99%  
-  - Cyan: Congrats, you are rich!  
-- **Bonus & Gift Days**: Manually add bonus days and gift days to your calculations  
-- **Automatic Cookie Authentication**: Secure login via Brave browser with automatic session management  
-- **Auto-refresh**: Periodic updates every 60 seconds  
-- **Manual Refresh**: Force refresh anytime from the dropdown menu
+- **Real-time Logtime Tracking** — Sessions are fetched from the 42 API and updated every 60 seconds, including your currently active session
+- **Visual Status Indicators**
+  - Red → below target
+  - Green → on track
+  - Cyan → above target
+- **Active Session Aware** — Counts time for sessions still in progress (logged in right now)
+- **Bonus & Gift Days** — Manually adjust your calculations
+- **OAuth2 Authentication** — Secure, token-based auth via the official 42 API (no browser, no cookies)
+- **Auto Token Refresh** — Token is renewed automatically before expiry
+- **Manual Refresh** — Force refresh anytime from the dropdown menu
 
 ## Requirements
 
-- GNOME Shell 42 or later  
-- Python 3.10+  
-- Brave Browser  
-- ChromeDriver
+- GNOME Shell 42 or later
+- A 42 intranet account with API access
 
-### Dependencies
+No external dependencies or Python required.
 
-- `python3` - Python runtime  
-- `python-pip` - Python package manager  
-- `brave` or `brave-browser` - Brave browser  
-- `chromedriver` - Selenium WebDriver for Chrome/Brave  
-- `selenium` - Python Selenium library  
-- `psutil` - Python process utilities
-
-## Development
-
-### File Structure
+## File Structure
 
 ```
 ./
-├── extension/
-│   ├── connect/
-│   │   ├── capture_cookies.py
-│   │   └── connect.js
-│   ├── data/
-│   │   ├── data.js
-│   │   └── storage.js
-│   ├── extension.js
-│   ├── metadata.json
-│   ├── prefs.js
-│   ├── stylesheet.css
-│   └── utils/
-│       ├── calculation.js
-│       ├── debug.js
-│       └── settings.js
+├── connect/
+│   ├── connect.js          # OAuth2 token fetch
+│   └── updater.js
+├── data/
+│   ├── data.js             # API requests & periodic refresh
+│   └── storage.js          # Local settings persistence
+├── utils/
+│   ├── calculation.js      # Logtime calculation from API sessions
+│   ├── debug.js
+│   └── settings.js
+├── extension.js            # Main extension entry point
+├── metadata.json
+├── prefs.js                # Settings UI
+├── stylesheet.css
 ├── install.sh
-├── README.md
-├── screenshots/
-│   └── preview.gif
-└── uninstall.sh
+├── uninstall.sh
+└── README.md
 ```
-### Debugging
 
-#### View extension logs:  
-Real-time log monitoring  
-`journalctl -f -o cat /usr/bin/gnome-shell`
+## Debugging
 
-Or use Looking Glass (Alt+F2, type 'lg')
+View extension logs in real time:
+```
+journalctl -f -o cat /usr/bin/gnome-shell
+```
 
-Cookie capture logs are written to:  
-`~/.local/share/gnome-shell/extensions/LogtimeWidget@zsonie/utils/.cookie_capture.log`
-
-### Building from Source
-
-The extension is written in JavaScript (GJS) and doesn't require compilation. Simply edit the files and restart GNOME Shell to see changes.
+Or use Looking Glass: `Alt+F2` → type `lg`
 
 ## Troubleshooting
 
+### Widget shows "Auth failed: check API keys"
+
+- Double-check your Client ID and Client Secret in Settings
+- Make sure the application is not revoked on the intranet
+- Verify your internet connection
+
+### Widget shows "Enter login & API keys in settings"
+
+- Open Settings and fill in your **42 login**, **Client ID**, and **Client Secret**
+
 ### Extension doesn't appear after installation
 
-Restart GNOME Shell  
-X11: Alt+F2, type 'r', Enter
-Check if extension is enabled  
-`gnome-extensions list --enabled | grep LogtimeWidget`
+```
+gnome-extensions list --enabled | grep LogtimeWidget
+gnome-extensions enable LogtimeWidget@zsonie
+```
 
-Enable manually if needed  
-`gnome-extensions enable LogtimeWidget@zsonie`
-
-### Login window doesn't close automatically
-
-The Brave window should close automatically after successful login. If it doesn't:  
-1. Close it manually after logging in  
-2. The cookie should still be captured  
-3. Check `.cookie_capture.log` for errors
-
-### "Failed to get data" error
-
-1. Click "Login" to refresh your session  
-2. Check your internet connection  
-3. Verify you have access to profile.intra.42.fr
+Then restart GNOME Shell.
 
 ## Uninstallation
 
-Using uninstall script  
 ```
 chmod +x uninstall.sh
 ./uninstall.sh
 ```
 
-Or manually  
+Or manually:
 ```
-gnome-extensions disable LogtimeWidget@zsonie  
+gnome-extensions disable LogtimeWidget@zsonie
 rm -rf ~/.local/share/gnome-shell/extensions/LogtimeWidget@zsonie
 ```
 
 ## Privacy & Security
 
-- Your Intra42 credentials are **never stored** by this extension  
-- Session cookies are stored locally in your home directory  
-- Cookies are only used to fetch your logtime data  
-- No data is sent to external servers (except profile.intra.42.fr)
+- Your Client Secret is stored **locally only** in `storage.json`
+- Authentication uses the official 42 OAuth2 API — no third-party services involved
+- No data is sent anywhere except `api.intra.42.fr`
 
 ## License
 
@@ -185,10 +188,7 @@ There's no License, come on.
 ## Credits
 
 - Developed by zsonie
-- Built with GNOME Shell Extension APIs
-- Python
-- CSS
-- JS
+- Built with GNOME Shell Extension APIs and the 42 API
 
 ## Support
 

@@ -298,7 +298,47 @@ function fillPreferencesWindow(window) {
 
     const storageRow = new Adw.ActionRow({
         title: 'Storage Location',
-        subtitle: MyStorage.STORAGE_FILE || 'Unknown path', 
+        subtitle: MyStorage.STORAGE_FILE || 'Unknown path',
     });
     infoGroup.add(storageRow);
+
+    // ===== Credits Group =====
+    const creditsGroup = new Adw.PreferencesGroup({
+        title: 'Credits',
+    });
+    page.add(creditsGroup);
+
+    const githubRow = new Adw.ActionRow({
+        title: 'zsonie',
+        subtitle: 'github.com/SaruM4N3',
+    });
+
+    const githubButton = new Gtk.Button({
+        label: 'GitHub',
+        valign: Gtk.Align.CENTER,
+    });
+
+    githubButton.connect('clicked', () => {
+        Gio.AppInfo.launch_default_for_uri('https://github.com/SaruM4N3', null);
+    });
+
+    githubRow.add_suffix(githubButton);
+    creditsGroup.add(githubRow);
+
+    const issueRow = new Adw.ActionRow({
+        title: 'Report an Issue',
+        subtitle: 'github.com/SaruM4N3/LogtimeWidget/issues',
+    });
+
+    const issueButton = new Gtk.Button({
+        label: 'Open',
+        valign: Gtk.Align.CENTER,
+    });
+
+    issueButton.connect('clicked', () => {
+        Gio.AppInfo.launch_default_for_uri('https://github.com/SaruM4N3/LogtimeWidget/issues', null);
+    });
+
+    issueRow.add_suffix(issueButton);
+    creditsGroup.add(issueRow);
 }
