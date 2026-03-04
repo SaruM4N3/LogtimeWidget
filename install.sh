@@ -29,6 +29,7 @@ if [ -f "$CREDENTIALS_FILE" ]; then
     echo -e "${GREEN}Existing credentials found — will be preserved.${NC}"
 else
     echo -e "${YELLOW}No existing credentials found.${NC}"
+    echo -e "${YELLOW}  → Setup guide: https://github.com/SaruM4N3/LogtimeWidget#first-time-setup${NC}"
 fi
 
 if [ -f "$SETTINGS_FILE" ]; then
