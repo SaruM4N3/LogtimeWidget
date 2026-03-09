@@ -193,12 +193,20 @@ class LogWidget {
 
 	_applyGradientCurve(t) {
 		switch (this.colorGradient) {
-			case 'linear':      return t;
-			case 'quadratic':   return t ** 2;
-			case 'cubic':       return t ** 3;
-			case 'sine':        return (1 - Math.cos(t * Math.PI)) / 2;
-			case 'smoothstep':  return t * t * (3 - 2 * t);
-			case 'circular':    return 1 - Math.sqrt(1 - t * t);
+			// Baseline
+			case 'linear':       return t;
+			// Decelerating
+			case 'ease-out':     return 1 - (1 - t) ** 2;
+			case 'cosine':       return Math.sin(t * Math.PI / 2);
+			// S-curves
+			case 'sine':         return (1 - Math.cos(t * Math.PI)) / 2;
+			case 'smoothstep':   return t * t * (3 - 2 * t);
+			case 'ease-in-out':  return t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2;
+			case 'smootherstep': return t * t * t * (t * (t * 6 - 15) + 10);
+			// Accelerating
+			case 'quadratic':    return t ** 2;
+			case 'cubic':        return t ** 3;
+			case 'circular':     return 1 - Math.sqrt(1 - t * t);
 			case 'bounce': {
 				if (t < 1 / 2.75) return 7.5625 * t * t;
 				if (t < 2 / 2.75) { t -= 1.5 / 2.75;   return 7.5625 * t * t + 0.75; }
@@ -206,7 +214,7 @@ class LogWidget {
 				t -= 2.625 / 2.75; return 7.5625 * t * t + 0.984375;
 			}
 			case 'exponential':
-			default:            return t ** 2.5;
+			default:             return t === 0 ? 0 : Math.pow(2, 10 * t - 10);
 		}
 	}
 

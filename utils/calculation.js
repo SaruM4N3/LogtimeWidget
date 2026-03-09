@@ -210,7 +210,7 @@ function formatTimeDisplay(data, bonusDays, giftDays, showMinutes = true, displa
     if (showMoney) {
         let earned = calculateMoney(birthDate, result.totalHours, result.workingHours);
         if (earned !== null)
-            moneySuffix = ` | ~€${earned.toFixed(2)}`;
+            moneySuffix = ` | ${earned.toFixed(2)}€`;
     }
 
     if (displayFormat === 'remaining') {

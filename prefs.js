@@ -4,8 +4,8 @@ const Me = ExtensionUtils.getCurrentExtension();
 const { MyStorage } = Me.imports.data.storage;
 const { Calculation } = Me.imports.utils.calculation;
 
-const DEFAULT_START_COLOR = '#ef4444';
-const DEFAULT_END_COLOR = '#4ade80';
+const DEFAULT_START_COLOR = '#fff000';
+const DEFAULT_END_COLOR = '#47ff00';
 const DEFAULT_AHEAD_COLOR = '#00c8ff';
 
 function hexToRGBA(hex) {
@@ -101,6 +101,12 @@ function fillPreferencesWindow(window) {
     });
     page.add(gratifGroup);
 
+    const gratifExpanderRow = new Adw.ExpanderRow({
+        title: 'Gratification Settings',
+        subtitle: 'Birth date & money display',
+    });
+    gratifGroup.add(gratifExpanderRow);
+
     const birthDateRow = new Adw.ActionRow({
         title: 'Birth Date',
         subtitle: 'Used to determine your gratification rate',
@@ -139,7 +145,7 @@ function fillPreferencesWindow(window) {
     });
 
     birthDateRow.add_suffix(birthDateButton);
-    gratifGroup.add(birthDateRow);
+    gratifExpanderRow.add_row(birthDateRow);
 
     const showMoneyRow = new Adw.ActionRow({
         title: 'Show Earned Money',
@@ -153,7 +159,7 @@ function fillPreferencesWindow(window) {
 
     showMoneyRow.add_suffix(showMoneySwitch);
     showMoneyRow.activatable_widget = showMoneySwitch;
-    gratifGroup.add(showMoneyRow);
+    gratifExpanderRow.add_row(showMoneyRow);
 
     // ===== Color Settings Group =====
     const colorGroup = new Adw.PreferencesGroup({
@@ -204,16 +210,16 @@ function fillPreferencesWindow(window) {
     aheadColorRow.activatable_widget = aheadColorButton;
     colorGroup.add(aheadColorRow);
 
+    const gradientCurveType = ['linear', 'ease-out', 'cosine', 'sine', 'smoothstep', 'ease-in-out', 'smootherstep', 'quadratic', 'cubic', 'exponential', 'circular', 'bounce'];
+
     const gradientCurveRow = new Adw.ActionRow({
         title: 'Gradient Curve',
         subtitle: 'How color transitions between start and end',
     });
 
-    const gradientCurveType = ['linear', 'quadratic', 'exponential', 'cubic', 'sine', 'smoothstep', 'circular', 'bounce'];
-
     const gradientCurveCombo = new Gtk.DropDown({
-        model: Gtk.StringList.new(['Linear', 'Quadratic', 'Exponential', 'Cubic', 'Sine (S-curve)', 'Smoothstep', 'Circular', 'Bounce']),
-        selected: Math.max(0, gradientCurveType.indexOf(saved.colorGradient || 'exponential')),
+        model: Gtk.StringList.new(['Linear', 'Ease Out', 'Cosine', 'Sine (S-curve)', 'Smoothstep', 'Ease In-Out', 'Smootherstep', 'Quadratic', 'Cubic', 'Exponential', 'Circular', 'Bounce']),
+        selected: Math.max(0, gradientCurveType.indexOf(saved.colorGradient || 'ease-out')),
         valign: Gtk.Align.CENTER,
     });
 
@@ -221,20 +227,34 @@ function fillPreferencesWindow(window) {
     gradientCurveRow.activatable_widget = gradientCurveCombo;
     colorGroup.add(gradientCurveRow);
 
+    const curveVizExpanderRow = new Adw.ExpanderRow({
+        title: 'Visualization',
+        subtitle: 'Preview & curve shape graph',
+    });
+    colorGroup.add(curveVizExpanderRow);
+
     const curvePreviewRow = new Adw.ActionRow({
         title: 'Preview',
         subtitle: 'Color gradient with selected curve applied',
     });
 
     const curveFunctions = {
-        'linear':      (t) => t,
-        'quadratic':   (t) => t ** 2,
-        'exponential': (t) => t ** 2.5,
-        'cubic':       (t) => t ** 3,
-        'sine':        (t) => (1 - Math.cos(t * Math.PI)) / 2,
-        'smoothstep':  (t) => t * t * (3 - 2 * t),
-        'circular':    (t) => 1 - Math.sqrt(1 - t * t),
-        'bounce':      (t) => {
+        // Baseline
+        'linear':        (t) => t,
+        // Decelerating (fast start, slow end)
+        'ease-out':      (t) => 1 - (1 - t) ** 2,
+        'cosine':        (t) => Math.sin(t * Math.PI / 2),
+        // S-curves (slow at both ends)
+        'sine':          (t) => (1 - Math.cos(t * Math.PI)) / 2,
+        'smoothstep':    (t) => t * t * (3 - 2 * t),
+        'ease-in-out':   (t) => t < 0.5 ? 4 * t * t * t : 1 - (-2 * t + 2) ** 3 / 2,
+        'smootherstep':  (t) => t * t * t * (t * (t * 6 - 15) + 10),
+        // Accelerating (slow start, fast end)
+        'quadratic':     (t) => t ** 2,
+        'cubic':         (t) => t ** 3,
+        'exponential':   (t) => t === 0 ? 0 : Math.pow(2, 10 * t - 10),
+        'circular':      (t) => 1 - Math.sqrt(1 - t * t),
+        'bounce':        (t) => {
             if (t < 1 / 2.75) return 7.5625 * t * t;
             if (t < 2 / 2.75) { t -= 1.5 / 2.75;   return 7.5625 * t * t + 0.75; }
             if (t < 2.5 / 2.75) { t -= 2.25 / 2.75; return 7.5625 * t * t + 0.9375; }
@@ -263,7 +283,7 @@ function fillPreferencesWindow(window) {
 
         for (let x = 0; x < width; x++) {
             let t = x / (width - 1);
-            let eased = fn(t);
+            let eased = Math.max(0, Math.min(1, fn(t)));
             cr.setSourceRGB(
                 start.r + (end.r - start.r) * eased,
                 start.g + (end.g - start.g) * eased,
@@ -277,7 +297,78 @@ function fillPreferencesWindow(window) {
     });
 
     curvePreviewRow.add_suffix(previewArea);
-    colorGroup.add(curvePreviewRow);
+    curveVizExpanderRow.add_row(curvePreviewRow);
+
+    const curveGraphRow = new Adw.ActionRow({
+        title: 'Curve Shape',
+        subtitle: 'Easing function graph (diagonal = linear reference)',
+    });
+
+    const curveGraph = new Gtk.DrawingArea({
+        content_width: 100,
+        content_height: 80,
+        hexpand: true,
+        valign: Gtk.Align.CENTER,
+        margin_top: 6,
+        margin_bottom: 6,
+    });
+
+    curveGraph.set_draw_func((_area, cr, width, height) => {
+        let selectedType = gradientCurveType[gradientCurveCombo.get_selected()];
+        let fn = curveFunctions[selectedType] || curveFunctions['linear'];
+
+        const pad = 8;
+        const w = width - pad * 2;
+        const h = height - pad * 2;
+
+        // Background
+        cr.setSourceRGBA(0.08, 0.08, 0.08, 0.9);
+        cr.rectangle(0, 0, width, height);
+        cr.fill();
+
+        // Grid lines
+        cr.setSourceRGBA(0.25, 0.25, 0.25, 1.0);
+        cr.setLineWidth(0.5);
+        for (let i = 1; i < 4; i++) {
+            cr.moveTo(pad + w * i / 4, pad);
+            cr.lineTo(pad + w * i / 4, pad + h);
+            cr.stroke();
+            cr.moveTo(pad, pad + h * i / 4);
+            cr.lineTo(pad + w, pad + h * i / 4);
+            cr.stroke();
+        }
+
+        // Border
+        cr.setSourceRGBA(0.35, 0.35, 0.35, 1.0);
+        cr.setLineWidth(1);
+        cr.rectangle(pad, pad, w, h);
+        cr.stroke();
+
+        // Linear reference diagonal
+        cr.setSourceRGBA(0.45, 0.45, 0.45, 1.0);
+        cr.setLineWidth(1);
+        cr.moveTo(pad, pad + h);
+        cr.lineTo(pad + w, pad);
+        cr.stroke();
+
+        // Curve
+        cr.setSourceRGBA(0.25, 0.75, 1.0, 1.0);
+        cr.setLineWidth(2);
+        const steps = w * 2;
+        cr.moveTo(pad, pad + h);
+        for (let i = 1; i <= steps; i++) {
+            let t = i / steps;
+            let eased = fn(t);
+            let y = Math.max(pad, Math.min(pad + h, pad + (1 - eased) * h));
+            cr.lineTo(pad + t * w, y);
+        }
+        cr.stroke();
+
+        cr.$dispose();
+    });
+
+    curveGraphRow.add_suffix(curveGraph);
+    curveVizExpanderRow.add_row(curveGraphRow);
 
     const resetColorsRow = new Adw.ActionRow({
         title: 'Reset Colors',
@@ -378,7 +469,7 @@ function fillPreferencesWindow(window) {
     });
 
     displayFormatCombo.connect('notify::selected', saveAllSettings);
-    gradientCurveCombo.connect('notify::selected', () => { saveAllSettings(); previewArea.queue_draw(); });
+    gradientCurveCombo.connect('notify::selected', () => { saveAllSettings(); previewArea.queue_draw(); curveGraph.queue_draw(); });
     startColorButton.connect('color-set', () => { saveAllSettings(); previewArea.queue_draw(); });
     endColorButton.connect('color-set', () => { saveAllSettings(); previewArea.queue_draw(); });
     aheadColorButton.connect('color-set', saveAllSettings);

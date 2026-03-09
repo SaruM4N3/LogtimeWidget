@@ -34,8 +34,8 @@ const STORAGE_FILE = GLib.build_filenamev([STORAGE_DIR, 'saved_days.json']);
 const CREDENTIALS_FILE = GLib.build_filenamev([STORAGE_DIR, 'credentials.json']);
 
 // Default colors
-const DEFAULT_START_COLOR = '#ef4444';
-const DEFAULT_END_COLOR = '#4ade80';
+const DEFAULT_START_COLOR = '#fff000';
+const DEFAULT_END_COLOR = '#47ff00';
 const DEFAULT_AHEAD_COLOR = '#00c8ff';
 
 function ensureStorageDir() {
@@ -69,7 +69,7 @@ function saveDays(bonusDays, giftDays, showMinutes, displayFormat, startColor, e
             showCurrentDay: showCurrentDay !== undefined ? showCurrentDay : false,
             birthDate: birthDate || '',
             showMoney: showMoney !== undefined ? showMoney : false,
-            colorGradient: colorGradient || 'exponential',
+            colorGradient: colorGradient || 'ease-out',
             month: getCurrentMonth()
         }, null, 2);
 
@@ -106,7 +106,7 @@ function loadDays() {
                     showCurrentDay: data.showCurrentDay !== undefined ? data.showCurrentDay : false,
                     birthDate: data.birthDate || '',
                     showMoney: data.showMoney !== undefined ? data.showMoney : false,
-                    colorGradient: data.colorGradient || 'exponential'
+                    colorGradient: data.colorGradient || 'ease-out'
                 };
             } else {
                 // Month changed - reset days but keep settings
@@ -119,7 +119,7 @@ function loadDays() {
                 defaults.showCurrentDay = data.showCurrentDay !== undefined ? data.showCurrentDay : false;
                 defaults.birthDate = data.birthDate || '';
                 defaults.showMoney = data.showMoney !== undefined ? data.showMoney : false;
-                defaults.colorGradient = data.colorGradient || 'exponential';
+                defaults.colorGradient = data.colorGradient || 'ease-out';
 
                 saveDays(0, 0, defaults.showMinutes, defaults.displayFormat,
                         defaults.startColor, defaults.endColor, defaults.aheadColor, defaults.showCurrentDay,
@@ -145,7 +145,7 @@ function getDefaults() {
         showCurrentDay: false,
         birthDate: '',
         showMoney: false,
-        colorGradient: 'exponential'
+        colorGradient: 'ease-out'
     };
 }
 
