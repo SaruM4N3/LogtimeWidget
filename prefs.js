@@ -295,7 +295,7 @@ function fillPreferencesWindow(window) {
 
     const saveCredsRow = new Adw.ActionRow({
         title: 'Save Credentials',
-        subtitle: 'Restart the widget after saving',
+        subtitle: 'Saves and reconnects automatically',
     });
     const saveCredsButton = new Gtk.Button({
         label: 'Save',

@@ -161,5 +161,6 @@ var MyStorage = {
     loadDays: loadDays,
     saveCredentials: saveCredentials,
     loadCredentials: loadCredentials,
-    STORAGE_FILE: STORAGE_FILE
+    STORAGE_FILE: STORAGE_FILE,
+    CREDENTIALS_FILE: CREDENTIALS_FILE
 };

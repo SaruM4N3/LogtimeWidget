@@ -70,6 +70,11 @@ class LogWidget {
 			this._fileMonitor = null;
 		}
 
+		if (this._credsMonitor) {
+			this._credsMonitor.cancel();
+			this._credsMonitor = null;
+		}
+
 		if (this._refreshTimeoutId) {
 			GLib.source_remove(this._refreshTimeoutId);
 			this._refreshTimeoutId = null;
@@ -155,6 +160,20 @@ class LogWidget {
 
 			Debug.logInfo(`Settings reloaded: format=${this.displayFormat}`);
 			this._updateLogtime();
+		});
+
+		// Monitor credentials file and reconnect when it changes
+		let credsFile = Gio.File.new_for_path(MyStorage.CREDENTIALS_FILE);
+		let credsDir = Gio.File.new_for_path(GLib.path_get_dirname(MyStorage.CREDENTIALS_FILE));
+		this._credsMonitor = credsDir.monitor_directory(Gio.FileMonitorFlags.NONE, null);
+		this._credsMonitor.connect('changed', (_monitor, file, _otherFile, eventType) => {
+			if (file && file.equal(credsFile)) {
+				Debug.logInfo(`Credentials file changed (Event: ${eventType}), reconnecting...`);
+				GLib.timeout_add(GLib.PRIORITY_DEFAULT, 200, () => {
+					this._apiMethod();
+					return GLib.SOURCE_REMOVE;
+				});
+			}
 		});
 	}
 
