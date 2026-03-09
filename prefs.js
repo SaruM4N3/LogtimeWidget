@@ -2,6 +2,7 @@ const { Adw, Gio, Gtk, Gdk } = imports.gi;
 const ExtensionUtils = imports.misc.extensionUtils;
 const Me = ExtensionUtils.getCurrentExtension();
 const { MyStorage } = Me.imports.data.storage;
+const { Calculation } = Me.imports.utils.calculation;
 
 const DEFAULT_START_COLOR = '#ef4444';
 const DEFAULT_END_COLOR = '#4ade80';
@@ -33,6 +34,7 @@ function saveCredentials(clientIdEntry, clientSecretEntry) {
 
 function fillPreferencesWindow(window) {
     let saved = MyStorage.loadDays();
+    let workingDaysInMonth = Calculation.calculateWorkingDaysInMonth();
 
     const page = new Adw.PreferencesPage({
         title: 'General',
@@ -214,7 +216,7 @@ function fillPreferencesWindow(window) {
     const bonusSpinButton = new Gtk.SpinButton({
         adjustment: new Gtk.Adjustment({
             lower: 0,
-            upper: 30,
+            upper: workingDaysInMonth,
             step_increment: 1,
             value: saved.bonusDays,
         }),
@@ -233,7 +235,7 @@ function fillPreferencesWindow(window) {
     const giftSpinButton = new Gtk.SpinButton({
         adjustment: new Gtk.Adjustment({
             lower: 0,
-            upper: 30,
+            upper: workingDaysInMonth,
             step_increment: 1,
             value: saved.giftDays,
         }),

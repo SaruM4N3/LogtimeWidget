@@ -107,7 +107,8 @@ function getMonthlyRate(birthDate) {
 function calculateMoney(birthDate, totalHours, workingHours) {
     let rate = getMonthlyRate(birthDate);
     if (rate === null || workingHours <= 0) return null;
-    return (totalHours / workingHours) * rate;
+    let ratio = Math.min(totalHours / workingHours, 1.0);
+    return ratio * rate;
 }
 
 function calculateTodayTotal(data) {
@@ -176,7 +177,8 @@ function calculateMonthlyTotal(data, bonusDays = 0, giftDays = 0) {
     let totalMinutes = Math.floor((totalSeconds % 3600) / 60);
 
     let workingDays = calculateWorkingDaysInMonth();
-    let effectiveWorkingDays = Math.max(0, workingDays - giftDays);
+    let clampedGiftDays = Math.min(giftDays, workingDays);
+    let effectiveWorkingDays = Math.max(0, workingDays - clampedGiftDays);
     let workingHours = effectiveWorkingDays * 7;
 
     Debug.logInfo(`Working days: ${workingDays}, gift: ${giftDays}, required: ${workingHours}h`);

@@ -11,6 +11,7 @@ const PopupMenu = imports.ui.popupMenu;
 const St = imports.gi.St;
 
 const { MyStorage } = Me.imports.data.storage;
+const { Calculation } = Me.imports.utils.calculation;
 const { Debug } = Me.imports.utils.debug;
 
 const APP_NAME = '[LogtimeWidget]';
@@ -67,6 +68,7 @@ function _createMenuItem(label, callback) {
 }
 
 function _setupDaySubmenu(widget, title, getVal, setVal) {
+	let maxDays = Calculation.calculateWorkingDaysInMonth();
 	let item = new PopupMenu.PopupSubMenuMenuItem(title);
 	widget._indicator.menu.addMenuItem(item);
 
@@ -92,7 +94,7 @@ function _setupDaySubmenu(widget, title, getVal, setVal) {
 	};
 
 	let save = () => {
-		MyStorage.saveDays(widget.bonusDays, widget.giftDays, widget.showMinutes, widget.displayFormat, widget.startColor, widget.endColor, widget.aheadColor);
+		MyStorage.saveDays(widget.bonusDays, widget.giftDays, widget.showMinutes, widget.displayFormat, widget.startColor, widget.endColor, widget.aheadColor, widget.showCurrentDay, widget.birthDate, widget.showMoney);
 		widget._updateLogtime();
 	};
 
@@ -105,9 +107,11 @@ function _setupDaySubmenu(widget, title, getVal, setVal) {
 	}));
 	box.add_child(countLabel);
 	box.add_child(makeBtn('+', () => {
-		setVal(getVal() + 1);
-		countLabel.set_text(String(getVal()));
-		save();
+		if (getVal() < maxDays) {
+			setVal(getVal() + 1);
+			countLabel.set_text(String(getVal()));
+			save();
+		}
 	}));
 
 	controlItem.actor.add_child(box);
