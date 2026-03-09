@@ -1,4 +1,4 @@
-const { Adw, Gio, Gtk, Gdk } = imports.gi;
+const { Adw, Gio, Gtk, Gdk, GLib } = imports.gi;
 const ExtensionUtils = imports.misc.extensionUtils;
 const Me = ExtensionUtils.getCurrentExtension();
 const { MyStorage } = Me.imports.data.storage;
@@ -103,18 +103,42 @@ function fillPreferencesWindow(window) {
 
     const birthDateRow = new Adw.ActionRow({
         title: 'Birth Date',
-        subtitle: 'Format: YYYY-MM-DD (used to determine your rate)',
+        subtitle: 'Used to determine your gratification rate',
     });
 
-    const birthDateEntry = new Gtk.Entry({
-        text: saved.birthDate || '',
-        placeholder_text: 'YYYY-MM-DD',
+    let currentBirthDate = saved.birthDate || '';
+
+    const birthDateButton = new Gtk.MenuButton({
+        label: currentBirthDate || 'Select date',
         valign: Gtk.Align.CENTER,
-        hexpand: true,
-        max_length: 10,
     });
 
-    birthDateRow.add_suffix(birthDateEntry);
+    const calendar = new Gtk.Calendar();
+
+    if (currentBirthDate) {
+        let parts = currentBirthDate.split('-');
+        if (parts.length === 3) {
+            let d = GLib.DateTime.new_local(
+                parseInt(parts[0]), parseInt(parts[1]), parseInt(parts[2]), 0, 0, 0
+            );
+            if (d) calendar.select_day(d);
+        }
+    }
+
+    const calendarPopover = new Gtk.Popover({ child: calendar });
+    birthDateButton.set_popover(calendarPopover);
+
+    calendar.connect('day-selected', () => {
+        let d = calendar.get_date();
+        let month = String(d.get_month()).padStart(2, '0');
+        let day = String(d.get_day_of_month()).padStart(2, '0');
+        currentBirthDate = `${d.get_year()}-${month}-${day}`;
+        birthDateButton.set_label(currentBirthDate);
+        calendarPopover.popdown();
+        saveAllSettings();
+    });
+
+    birthDateRow.add_suffix(birthDateButton);
     gratifGroup.add(birthDateRow);
 
     const showMoneyRow = new Adw.ActionRow({
@@ -140,7 +164,7 @@ function fillPreferencesWindow(window) {
 
     const startColorRow = new Adw.ActionRow({
         title: 'Start Color (0%)',
-        subtitle: 'Color when no hours are logged',
+        subtitle: 'Color when hours are egal to 0',
     });
 
     const startColorButton = new Gtk.ColorButton({
@@ -180,6 +204,81 @@ function fillPreferencesWindow(window) {
     aheadColorRow.activatable_widget = aheadColorButton;
     colorGroup.add(aheadColorRow);
 
+    const gradientCurveRow = new Adw.ActionRow({
+        title: 'Gradient Curve',
+        subtitle: 'How color transitions between start and end',
+    });
+
+    const gradientCurveType = ['linear', 'quadratic', 'exponential', 'cubic', 'sine', 'smoothstep', 'circular', 'bounce'];
+
+    const gradientCurveCombo = new Gtk.DropDown({
+        model: Gtk.StringList.new(['Linear', 'Quadratic', 'Exponential', 'Cubic', 'Sine (S-curve)', 'Smoothstep', 'Circular', 'Bounce']),
+        selected: Math.max(0, gradientCurveType.indexOf(saved.colorGradient || 'exponential')),
+        valign: Gtk.Align.CENTER,
+    });
+
+    gradientCurveRow.add_suffix(gradientCurveCombo);
+    gradientCurveRow.activatable_widget = gradientCurveCombo;
+    colorGroup.add(gradientCurveRow);
+
+    const curvePreviewRow = new Adw.ActionRow({
+        title: 'Preview',
+        subtitle: 'Color gradient with selected curve applied',
+    });
+
+    const curveFunctions = {
+        'linear':      (t) => t,
+        'quadratic':   (t) => t ** 2,
+        'exponential': (t) => t ** 2.5,
+        'cubic':       (t) => t ** 3,
+        'sine':        (t) => (1 - Math.cos(t * Math.PI)) / 2,
+        'smoothstep':  (t) => t * t * (3 - 2 * t),
+        'circular':    (t) => 1 - Math.sqrt(1 - t * t),
+        'bounce':      (t) => {
+            if (t < 1 / 2.75) return 7.5625 * t * t;
+            if (t < 2 / 2.75) { t -= 1.5 / 2.75;   return 7.5625 * t * t + 0.75; }
+            if (t < 2.5 / 2.75) { t -= 2.25 / 2.75; return 7.5625 * t * t + 0.9375; }
+            t -= 2.625 / 2.75; return 7.5625 * t * t + 0.984375;
+        },
+    };
+
+    const previewArea = new Gtk.DrawingArea({
+        content_width: 240,
+        content_height: 24,
+        valign: Gtk.Align.CENTER,
+    });
+
+    previewArea.set_draw_func((_area, cr, width, height) => {
+        let selectedType = gradientCurveType[gradientCurveCombo.get_selected()];
+        let fn = curveFunctions[selectedType] || curveFunctions['linear'];
+
+        let parseHex = (hex) => ({
+            r: parseInt(hex.slice(1, 3), 16) / 255,
+            g: parseInt(hex.slice(3, 5), 16) / 255,
+            b: parseInt(hex.slice(5, 7), 16) / 255,
+        });
+
+        let start = parseHex(rgbaToHex(startColorButton.get_rgba()));
+        let end = parseHex(rgbaToHex(endColorButton.get_rgba()));
+
+        for (let x = 0; x < width; x++) {
+            let t = x / (width - 1);
+            let eased = fn(t);
+            cr.setSourceRGB(
+                start.r + (end.r - start.r) * eased,
+                start.g + (end.g - start.g) * eased,
+                start.b + (end.b - start.b) * eased
+            );
+            cr.rectangle(x, 0, 1, height);
+            cr.fill();
+        }
+
+        cr.$dispose();
+    });
+
+    curvePreviewRow.add_suffix(previewArea);
+    colorGroup.add(curvePreviewRow);
+
     const resetColorsRow = new Adw.ActionRow({
         title: 'Reset Colors',
         subtitle: 'Restore default color gradient',
@@ -195,6 +294,7 @@ function fillPreferencesWindow(window) {
         endColorButton.set_rgba(hexToRGBA(DEFAULT_END_COLOR));
         aheadColorButton.set_rgba(hexToRGBA(DEFAULT_AHEAD_COLOR));
         saveAllSettings();
+        previewArea.queue_draw();
     });
 
     resetColorsRow.add_suffix(resetColorsButton);
@@ -256,8 +356,9 @@ function fillPreferencesWindow(window) {
             rgbaToHex(endColorButton.get_rgba()),
             rgbaToHex(aheadColorButton.get_rgba()),
             showCurrentDaySwitch.get_active(),
-            birthDateEntry.get_text().trim(),
-            showMoneySwitch.get_active()
+            currentBirthDate,
+            showMoneySwitch.get_active(),
+            gradientCurveType[gradientCurveCombo.get_selected()]
         );
     }
 
@@ -276,11 +377,10 @@ function fillPreferencesWindow(window) {
         return false;
     });
 
-    birthDateEntry.connect('changed', saveAllSettings);
-
     displayFormatCombo.connect('notify::selected', saveAllSettings);
-    startColorButton.connect('color-set', saveAllSettings);
-    endColorButton.connect('color-set', saveAllSettings);
+    gradientCurveCombo.connect('notify::selected', () => { saveAllSettings(); previewArea.queue_draw(); });
+    startColorButton.connect('color-set', () => { saveAllSettings(); previewArea.queue_draw(); });
+    endColorButton.connect('color-set', () => { saveAllSettings(); previewArea.queue_draw(); });
     aheadColorButton.connect('color-set', saveAllSettings);
     bonusSpinButton.connect('value-changed', saveAllSettings);
     giftSpinButton.connect('value-changed', saveAllSettings);

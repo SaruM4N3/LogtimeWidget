@@ -94,7 +94,7 @@ function _setupDaySubmenu(widget, title, getVal, setVal) {
 	};
 
 	let save = () => {
-		MyStorage.saveDays(widget.bonusDays, widget.giftDays, widget.showMinutes, widget.displayFormat, widget.startColor, widget.endColor, widget.aheadColor, widget.showCurrentDay, widget.birthDate, widget.showMoney);
+		MyStorage.saveDays(widget.bonusDays, widget.giftDays, widget.showMinutes, widget.displayFormat, widget.startColor, widget.endColor, widget.aheadColor, widget.showCurrentDay, widget.birthDate, widget.showMoney, widget.colorGradient);
 		widget._updateLogtime();
 	};
 

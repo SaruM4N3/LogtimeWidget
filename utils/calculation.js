@@ -106,7 +106,8 @@ function getMonthlyRate(birthDate) {
 
 function calculateMoney(birthDate, totalHours, workingHours) {
     let rate = getMonthlyRate(birthDate);
-    if (rate === null || workingHours <= 0) return null;
+    if (rate === null) return null;
+    if (workingHours <= 0) return rate;
     let ratio = Math.min(totalHours / workingHours, 1.0);
     return ratio * rate;
 }
