@@ -1,4 +1,4 @@
-const { Adw, Gio, Gtk, GLib, Gdk } = imports.gi;
+const { Adw, Gio, Gtk, Gdk } = imports.gi;
 const ExtensionUtils = imports.misc.extensionUtils;
 const Me = ExtensionUtils.getCurrentExtension();
 const { MyStorage } = Me.imports.data.storage;
