@@ -84,6 +84,64 @@ function calculateWorkingDaysInMonth() {
     return workingDays;
 }
 
+// Barème Auvergne-Rhône-Alpes actualisé au 01/04/2025
+function getMonthlyRate(birthDate) {
+    if (!birthDate) return null;
+    let parts = birthDate.split('-');
+    if (parts.length !== 3) return null;
+
+    let now = new Date();
+    let birth = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+    if (isNaN(birth.getTime())) return null;
+
+    let age = now.getFullYear() - birth.getFullYear();
+    let m = now.getMonth() - birth.getMonth();
+    if (m < 0 || (m === 0 && now.getDate() < birth.getDate())) age--;
+
+    if (age >= 26) return 769.49;
+    if (age >= 18) return 561.68;
+    if (age >= 16) return 224.68;
+    return null;
+}
+
+function calculateMoney(birthDate, totalHours, workingHours) {
+    let rate = getMonthlyRate(birthDate);
+    if (rate === null || workingHours <= 0) return null;
+    return (totalHours / workingHours) * rate;
+}
+
+function calculateTodayTotal(data) {
+    let now = new Date();
+    let currentYear = now.getFullYear();
+    let currentMonth = now.getMonth() + 1;
+    let currentDay = now.getDate();
+    let totalSeconds = 0;
+
+    if (Array.isArray(data)) {
+        for (let session of data) {
+            let beginAt = new Date(session.begin_at);
+            if (beginAt.getFullYear() !== currentYear ||
+                (beginAt.getMonth() + 1) !== currentMonth ||
+                beginAt.getDate() !== currentDay) continue;
+            let endAt = session.end_at ? new Date(session.end_at) : now;
+            totalSeconds += (endAt - beginAt) / 1000;
+        }
+    } else {
+        let pad = (n) => String(n).padStart(2, '0');
+        let todayStr = `${currentYear}-${pad(currentMonth)}-${pad(currentDay)}`;
+        if (data[todayStr]) {
+            let timeParts = data[todayStr].split(':');
+            if (timeParts.length >= 3)
+                totalSeconds += parseInt(timeParts[0]) * 3600 + parseInt(timeParts[1]) * 60 + parseFloat(timeParts[2]);
+        }
+    }
+
+    return {
+        hours: Math.floor(totalSeconds / 3600),
+        minutes: Math.floor((totalSeconds % 3600) / 60),
+    };
+}
+
 function calculateMonthlyTotal(data, bonusDays = 0, giftDays = 0) {
     let now = new Date();
     let currentYear = now.getFullYear();
@@ -133,9 +191,24 @@ function calculateMonthlyTotal(data, bonusDays = 0, giftDays = 0) {
     };
 }
 
-function formatTimeDisplay(data, bonusDays, giftDays, showMinutes = true, displayFormat = 'ratio') {
+function formatTimeDisplay(data, bonusDays, giftDays, showMinutes = true, displayFormat = 'ratio', showCurrentDay = false, birthDate = '', showMoney = false) {
     let result = calculateMonthlyTotal(data, bonusDays, giftDays);
     let pad = (num) => num.toString().padStart(2, '0');
+
+    let todaySuffix = '';
+    if (showCurrentDay) {
+        let today = calculateTodayTotal(data);
+        todaySuffix = showMinutes
+            ? ` | Today: ${today.hours}h${pad(today.minutes)}`
+            : ` | Today: ${today.hours}h`;
+    }
+
+    let moneySuffix = '';
+    if (showMoney) {
+        let earned = calculateMoney(birthDate, result.totalHours, result.workingHours);
+        if (earned !== null)
+            moneySuffix = ` | ~€${earned.toFixed(2)}`;
+    }
 
     if (displayFormat === 'remaining') {
         let remainingSeconds = (result.workingHours * 3600) - result.totalSeconds;
@@ -147,7 +220,7 @@ function formatTimeDisplay(data, bonusDays, giftDays, showMinutes = true, displa
             ? (showMinutes ? `+${absHours}h${pad(absMinutes)} above!` : `+${absHours}h above!`)
             : (showMinutes ? `Remaining: ${absHours}h${pad(absMinutes)}` : `Remaining: ${absHours}h`);
 
-        return { text, isOnTrack: isAhead, totalHours: result.totalHours, totalMinutes: result.totalMinutes, workingHours: result.workingHours };
+        return { text: text + todaySuffix + moneySuffix, isOnTrack: isAhead, totalHours: result.totalHours, totalMinutes: result.totalMinutes, workingHours: result.workingHours };
     }
 
     let ratioText = showMinutes
@@ -163,16 +236,19 @@ function formatTimeDisplay(data, bonusDays, giftDays, showMinutes = true, displa
             ? (showMinutes ? `+${absHours}h${pad(absMinutes)} above!` : `+${absHours}h above!`)
             : (showMinutes ? `Remaining: ${absHours}h${pad(absMinutes)}` : `Remaining: ${absHours}h`);
 
-        return { text: `${ratioText} | ${remainingText}`, isOnTrack: result.isOnTrack, totalHours: result.totalHours, totalMinutes: result.totalMinutes, workingHours: result.workingHours };
+        return { text: `${ratioText} | ${remainingText}` + todaySuffix + moneySuffix, isOnTrack: result.isOnTrack, totalHours: result.totalHours, totalMinutes: result.totalMinutes, workingHours: result.workingHours };
     }
 
     // ratio (default)
-    return { text: ratioText, isOnTrack: result.isOnTrack, totalHours: result.totalHours, totalMinutes: result.totalMinutes, workingHours: result.workingHours };
+    return { text: ratioText + todaySuffix + moneySuffix, isOnTrack: result.isOnTrack, totalHours: result.totalHours, totalMinutes: result.totalMinutes, workingHours: result.workingHours };
 }
 
 var Calculation = {
     calculateMonthlyTotal,
+    calculateTodayTotal,
     calculateWorkingDaysInMonth,
     getFrenchPublicHolidays,
+    calculateMoney,
+    getMonthlyRate,
     formatTimeDisplay,
 };

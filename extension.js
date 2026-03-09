@@ -21,6 +21,9 @@ class LogWidget {
 		this.giftDays = saved.giftDays;
 		this.showMinutes = saved.showMinutes !== undefined ? saved.showMinutes : true;
 		this.displayFormat = saved.displayFormat || 'ratio';
+		this.showCurrentDay = saved.showCurrentDay !== undefined ? saved.showCurrentDay : false;
+		this.birthDate = saved.birthDate || '';
+		this.showMoney = saved.showMoney !== undefined ? saved.showMoney : false;
 		this.startColor = saved.startColor || '#ef4444';
 		this.endColor = saved.endColor || '#4ade80';
 		this.aheadColor = saved.aheadColor || '#00c8ff';
@@ -83,6 +86,9 @@ class LogWidget {
 			this.giftDays = saved.giftDays;
 			this.showMinutes = saved.showMinutes;
 			this.displayFormat = saved.displayFormat || 'ratio';
+			this.showCurrentDay = saved.showCurrentDay !== undefined ? saved.showCurrentDay : false;
+			this.birthDate = saved.birthDate || '';
+			this.showMoney = saved.showMoney !== undefined ? saved.showMoney : false;
 			this.startColor = saved.startColor;
 			this.endColor = saved.endColor;
 			this.aheadColor = saved.aheadColor;
@@ -169,7 +175,10 @@ class LogWidget {
 			this.bonusDays || 0,
 			this.giftDays || 0,
 			this.showMinutes,
-			this.displayFormat
+			this.displayFormat,
+			this.showCurrentDay,
+			this.birthDate,
+			this.showMoney
 		);
 
 		this._label.set_text(result.text);

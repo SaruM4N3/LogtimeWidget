@@ -55,7 +55,7 @@ function getCurrentMonth() {
     return `${now.get_year()}-${now.get_month()}`;
 }
 
-function saveDays(bonusDays, giftDays, showMinutes, displayFormat, startColor, endColor, aheadColor) {
+function saveDays(bonusDays, giftDays, showMinutes, displayFormat, startColor, endColor, aheadColor, showCurrentDay, birthDate, showMoney) {
     try {
         ensureStorageDir();
         let data = JSON.stringify({
@@ -66,6 +66,9 @@ function saveDays(bonusDays, giftDays, showMinutes, displayFormat, startColor, e
             startColor: startColor || DEFAULT_START_COLOR,
             endColor: endColor || DEFAULT_END_COLOR,
             aheadColor: aheadColor || DEFAULT_AHEAD_COLOR,
+            showCurrentDay: showCurrentDay !== undefined ? showCurrentDay : false,
+            birthDate: birthDate || '',
+            showMoney: showMoney !== undefined ? showMoney : false,
             month: getCurrentMonth()
         }, null, 2);
 
@@ -98,7 +101,10 @@ function loadDays() {
                     displayFormat: data.displayFormat || 'ratio',
                     startColor: data.startColor || DEFAULT_START_COLOR,
                     endColor: data.endColor || DEFAULT_END_COLOR,
-                    aheadColor: data.aheadColor || DEFAULT_AHEAD_COLOR
+                    aheadColor: data.aheadColor || DEFAULT_AHEAD_COLOR,
+                    showCurrentDay: data.showCurrentDay !== undefined ? data.showCurrentDay : false,
+                    birthDate: data.birthDate || '',
+                    showMoney: data.showMoney !== undefined ? data.showMoney : false
                 };
             } else {
                 // Month changed - reset days but keep settings
@@ -108,9 +114,13 @@ function loadDays() {
                 defaults.startColor = data.startColor;
                 defaults.endColor = data.endColor;
                 defaults.aheadColor = data.aheadColor;
-                
-                saveDays(0, 0, defaults.showMinutes, defaults.displayFormat, 
-                        defaults.startColor, defaults.endColor, defaults.aheadColor);
+                defaults.showCurrentDay = data.showCurrentDay !== undefined ? data.showCurrentDay : false;
+                defaults.birthDate = data.birthDate || '';
+                defaults.showMoney = data.showMoney !== undefined ? data.showMoney : false;
+
+                saveDays(0, 0, defaults.showMinutes, defaults.displayFormat,
+                        defaults.startColor, defaults.endColor, defaults.aheadColor, defaults.showCurrentDay,
+                        defaults.birthDate, defaults.showMoney);
                 return defaults;
             }
         }
@@ -128,7 +138,10 @@ function getDefaults() {
         displayFormat: 'ratio',
         startColor: DEFAULT_START_COLOR,
         endColor: DEFAULT_END_COLOR,
-        aheadColor: DEFAULT_AHEAD_COLOR
+        aheadColor: DEFAULT_AHEAD_COLOR,
+        showCurrentDay: false,
+        birthDate: '',
+        showMoney: false
     };
 }
 

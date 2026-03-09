@@ -61,6 +61,20 @@ function fillPreferencesWindow(window) {
     showMinutesRow.activatable_widget = showMinutesSwitch;
     displayGroup.add(showMinutesRow);
 
+    const showCurrentDayRow = new Adw.ActionRow({
+        title: 'Show Current Day',
+        subtitle: 'Append today\'s logged hours to the panel label',
+    });
+
+    const showCurrentDaySwitch = new Gtk.Switch({
+        active: saved.showCurrentDay !== undefined ? saved.showCurrentDay : false,
+        valign: Gtk.Align.CENTER,
+    });
+
+    showCurrentDayRow.add_suffix(showCurrentDaySwitch);
+    showCurrentDayRow.activatable_widget = showCurrentDaySwitch;
+    displayGroup.add(showCurrentDayRow);
+
     const displayFormatRow = new Adw.ActionRow({
         title: 'Display Format',
         subtitle: 'Choose how to display logtime information',
@@ -77,6 +91,43 @@ function fillPreferencesWindow(window) {
     displayFormatRow.add_suffix(displayFormatCombo);
     displayFormatRow.activatable_widget = displayFormatCombo;
     displayGroup.add(displayFormatRow);
+
+    // ===== Gratification Group =====
+    const gratifGroup = new Adw.PreferencesGroup({
+        title: 'Gratification (Barème Auvergne-Rhône-Alpes)',
+        description: 'Based on barème actualisé au 01/04/2025',
+    });
+    page.add(gratifGroup);
+
+    const birthDateRow = new Adw.ActionRow({
+        title: 'Birth Date',
+        subtitle: 'Format: YYYY-MM-DD (used to determine your rate)',
+    });
+
+    const birthDateEntry = new Gtk.Entry({
+        text: saved.birthDate || '',
+        placeholder_text: 'YYYY-MM-DD',
+        valign: Gtk.Align.CENTER,
+        hexpand: true,
+        max_length: 10,
+    });
+
+    birthDateRow.add_suffix(birthDateEntry);
+    gratifGroup.add(birthDateRow);
+
+    const showMoneyRow = new Adw.ActionRow({
+        title: 'Show Earned Money',
+        subtitle: 'Append estimated monthly gratification to the panel label',
+    });
+
+    const showMoneySwitch = new Gtk.Switch({
+        active: saved.showMoney !== undefined ? saved.showMoney : false,
+        valign: Gtk.Align.CENTER,
+    });
+
+    showMoneyRow.add_suffix(showMoneySwitch);
+    showMoneyRow.activatable_widget = showMoneySwitch;
+    gratifGroup.add(showMoneyRow);
 
     // ===== Color Settings Group =====
     const colorGroup = new Adw.PreferencesGroup({
@@ -201,7 +252,10 @@ function fillPreferencesWindow(window) {
             displayFormatType[displayFormatCombo.get_selected()],
             rgbaToHex(startColorButton.get_rgba()),
             rgbaToHex(endColorButton.get_rgba()),
-            rgbaToHex(aheadColorButton.get_rgba())
+            rgbaToHex(aheadColorButton.get_rgba()),
+            showCurrentDaySwitch.get_active(),
+            birthDateEntry.get_text().trim(),
+            showMoneySwitch.get_active()
         );
     }
 
@@ -209,6 +263,18 @@ function fillPreferencesWindow(window) {
         saveAllSettings();
         return false;
     });
+
+    showCurrentDaySwitch.connect('state-set', () => {
+        saveAllSettings();
+        return false;
+    });
+
+    showMoneySwitch.connect('state-set', () => {
+        saveAllSettings();
+        return false;
+    });
+
+    birthDateEntry.connect('changed', saveAllSettings);
 
     displayFormatCombo.connect('notify::selected', saveAllSettings);
     startColorButton.connect('color-set', saveAllSettings);
