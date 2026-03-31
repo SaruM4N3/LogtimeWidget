@@ -15,7 +15,7 @@ echo -e "${GREEN}   Logtime Widget Installer (Dev Mode)  ${NC}"
 echo -e "${GREEN}========================================${NC}"
 echo ""
 
-EXTENSION_UUID="LogtimeWidget@zsonie"
+EXTENSION_UUID="soft-brightness@fifi.org"
 SOURCE_DIR="$(pwd)"  # this repo
 INSTALL_DIR="$HOME/.local/share/gnome-shell/extensions/$EXTENSION_UUID"
 
