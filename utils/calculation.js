@@ -21,8 +21,8 @@ function getFrenchPublicHolidays(year) {
 
     let easter = calculateEaster(year);
     holidays.push(easter);
-    holidays.push(addDaysToDate(easter, 39)); // Ascension
-    holidays.push(addDaysToDate(easter, 50)); // Lundi de Pentecôte
+    holidays.push(addDaysToDate(easter, 38)); // Ascension (39 days after Easter Sunday = 38 after Easter Monday)
+    holidays.push(addDaysToDate(easter, 49)); // Lundi de Pentecôte (50 days after Easter Sunday = 49 after Easter Monday)
 
     return holidays;
 }
