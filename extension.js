@@ -24,6 +24,7 @@ class LogWidget {
 		this.showCurrentDay = saved.showCurrentDay !== undefined ? saved.showCurrentDay : false;
 		this.birthDate = saved.birthDate || '';
 		this.showMoney = saved.showMoney !== undefined ? saved.showMoney : false;
+		this.showSeconds = saved.showSeconds !== undefined ? saved.showSeconds : false;
 		this.colorGradient = saved.colorGradient || 'exponential';
 		this.startColor = saved.startColor || '#ef4444';
 		this.endColor = saved.endColor || '#4ade80';
@@ -31,6 +32,7 @@ class LogWidget {
 		this._refreshTimeoutId = null;
 		this._tokenRefreshTimeoutId = null;
 		this._checkTimeout = null;
+		this._secondUpdateId = null;
 		this._cachedData = null;
 		this._fileMonitor = null;
 		this._credsMonitor = null;
@@ -43,6 +45,12 @@ class LogWidget {
 		Menu.setupApp(this);
 		this._setupStorageMonitoring();
 		this._apiMethod();
+
+		// Update display every second so ongoing sessions tick up in real-time
+		this._secondUpdateId = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, 1, () => {
+			this._updateLogtime();
+			return GLib.SOURCE_CONTINUE;
+		});
 
 		this.updateManager = new Updater.UpdateManager();
 
@@ -67,12 +75,13 @@ class LogWidget {
 		this._fileMonitor = null;
 		this._credsMonitor = null;
 
-		[this._refreshTimeoutId, this._tokenRefreshTimeoutId, this._checkTimeout].forEach((id) => {
+		[this._refreshTimeoutId, this._tokenRefreshTimeoutId, this._checkTimeout, this._secondUpdateId].forEach((id) => {
 			if (id) GLib.source_remove(id);
 		});
 		this._refreshTimeoutId = null;
 		this._tokenRefreshTimeoutId = null;
 		this._checkTimeout = null;
+		this._secondUpdateId = null;
 
 		if (this._indicator) {
 			this._indicator.destroy();
@@ -90,6 +99,7 @@ class LogWidget {
 			this.showCurrentDay = saved.showCurrentDay !== undefined ? saved.showCurrentDay : false;
 			this.birthDate = saved.birthDate || '';
 			this.showMoney = saved.showMoney !== undefined ? saved.showMoney : false;
+			this.showSeconds = saved.showSeconds !== undefined ? saved.showSeconds : false;
 			this.colorGradient = saved.colorGradient || 'exponential';
 			this.startColor = saved.startColor;
 			this.endColor = saved.endColor;
@@ -178,7 +188,8 @@ class LogWidget {
 			this.displayFormat,
 			this.showCurrentDay,
 			this.birthDate,
-			this.showMoney
+			this.showMoney,
+			this.showSeconds
 		);
 
 		this._label.set_text(result.text);

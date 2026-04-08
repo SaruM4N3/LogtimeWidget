@@ -63,6 +63,20 @@ function fillPreferencesWindow(window) {
     showMinutesRow.activatable_widget = showMinutesSwitch;
     displayGroup.add(showMinutesRow);
 
+    const showSecondsRow = new Adw.ActionRow({
+        title: 'Show Seconds',
+        subtitle: 'Display seconds — widget updates every second when enabled',
+    });
+
+    const showSecondsSwitch = new Gtk.Switch({
+        active: saved.showSeconds !== undefined ? saved.showSeconds : false,
+        valign: Gtk.Align.CENTER,
+    });
+
+    showSecondsRow.add_suffix(showSecondsSwitch);
+    showSecondsRow.activatable_widget = showSecondsSwitch;
+    displayGroup.add(showSecondsRow);
+
     const showCurrentDayRow = new Adw.ActionRow({
         title: 'Show Current Day',
         subtitle: 'Append today\'s logged hours to the panel label',
@@ -449,11 +463,17 @@ function fillPreferencesWindow(window) {
             showCurrentDaySwitch.get_active(),
             currentBirthDate,
             showMoneySwitch.get_active(),
-            gradientCurveType[gradientCurveCombo.get_selected()]
+            gradientCurveType[gradientCurveCombo.get_selected()],
+            showSecondsSwitch.get_active()
         );
     }
 
     showMinutesSwitch.connect('state-set', () => {
+        saveAllSettings();
+        return false;
+    });
+
+    showSecondsSwitch.connect('state-set', () => {
         saveAllSettings();
         return false;
     });

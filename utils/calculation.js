@@ -119,14 +119,18 @@ function calculateTodayTotal(data) {
     let currentDay = now.getDate();
     let totalSeconds = 0;
 
+    // Day boundaries in local time — clamp so midnight-crossing sessions are counted correctly
+    let dayStart = new Date(currentYear, currentMonth - 1, currentDay, 0, 0, 0, 0);
+    let dayEnd   = new Date(currentYear, currentMonth - 1, currentDay, 23, 59, 59, 999);
+
     if (Array.isArray(data)) {
         for (let session of data) {
             let beginAt = new Date(session.begin_at);
-            if (beginAt.getFullYear() !== currentYear ||
-                (beginAt.getMonth() + 1) !== currentMonth ||
-                beginAt.getDate() !== currentDay) continue;
-            let endAt = session.end_at ? new Date(session.end_at) : now;
-            totalSeconds += (endAt - beginAt) / 1000;
+            let endAt   = session.end_at ? new Date(session.end_at) : now;
+            if (endAt <= dayStart || beginAt >= dayEnd) continue;
+            let effectiveBegin = beginAt < dayStart ? dayStart : beginAt;
+            let effectiveEnd   = endAt   > dayEnd   ? dayEnd   : endAt;
+            totalSeconds += (effectiveEnd - effectiveBegin) / 1000;
         }
     } else {
         let pad = (n) => String(n).padStart(2, '0');
@@ -141,6 +145,7 @@ function calculateTodayTotal(data) {
     return {
         hours: Math.floor(totalSeconds / 3600),
         minutes: Math.floor((totalSeconds % 3600) / 60),
+        seconds: Math.floor(totalSeconds % 60),
     };
 }
 
@@ -176,6 +181,7 @@ function calculateMonthlyTotal(data, bonusDays = 0, giftDays = 0) {
 
     let totalHours = Math.floor(totalSeconds / 3600);
     let totalMinutes = Math.floor((totalSeconds % 3600) / 60);
+    let totalSecs = Math.floor(totalSeconds % 60);
 
     let workingDays = calculateWorkingDaysInMonth();
     let clampedGiftDays = Math.min(giftDays, workingDays);
@@ -188,56 +194,63 @@ function calculateMonthlyTotal(data, bonusDays = 0, giftDays = 0) {
         isOnTrack: totalHours >= workingHours,
         totalHours,
         totalMinutes,
+        totalSecs,
         totalSeconds,
         workingHours,
         workingDays: effectiveWorkingDays,
     };
 }
 
-function formatTimeDisplay(data, bonusDays, giftDays, showMinutes = true, displayFormat = 'ratio', showCurrentDay = false, birthDate = '', showMoney = false) {
+function formatTimeDisplay(data, bonusDays, giftDays, showMinutes = true, displayFormat = 'ratio', showCurrentDay = false, birthDate = '', showMoney = false, showSeconds = false) {
     let result = calculateMonthlyTotal(data, bonusDays, giftDays);
     let pad = (num) => num.toString().padStart(2, '0');
+
+    let fmtDuration = (hours, minutes, seconds) => {
+        if (showSeconds && showMinutes) return `${hours}h${pad(minutes)}m${pad(seconds)}s`;
+        if (showMinutes)                return `${hours}h${pad(minutes)}`;
+        return `${hours}h`;
+    };
 
     let todaySuffix = '';
     if (showCurrentDay) {
         let today = calculateTodayTotal(data);
-        todaySuffix = showMinutes
-            ? ` | Today: ${today.hours}h${pad(today.minutes)}`
-            : ` | Today: ${today.hours}h`;
+        todaySuffix = ` | Today: ${fmtDuration(today.hours, today.minutes, today.seconds)}`;
     }
 
     let moneySuffix = '';
     if (showMoney) {
-        let earned = calculateMoney(birthDate, result.totalHours, result.workingHours);
+        let earned = calculateMoney(birthDate, result.totalSeconds / 3600.0, result.workingHours);
         if (earned !== null)
-            moneySuffix = ` | ${earned.toFixed(2)}€`;
+            moneySuffix = ` | ${earned.toFixed(3)}€`;
     }
 
     if (displayFormat === 'remaining') {
         let remainingSeconds = (result.workingHours * 3600) - result.totalSeconds;
         let isAhead = remainingSeconds < 0;
-        let absHours = Math.floor(Math.abs(remainingSeconds) / 3600);
-        let absMinutes = Math.floor((Math.abs(remainingSeconds) % 3600) / 60);
+        let abs = Math.abs(remainingSeconds);
+        let absH = Math.floor(abs / 3600);
+        let absM = Math.floor((abs % 3600) / 60);
+        let absS = Math.floor(abs % 60);
 
         let text = isAhead
-            ? (showMinutes ? `+${absHours}h${pad(absMinutes)} above!` : `+${absHours}h above!`)
-            : (showMinutes ? `Remaining: ${absHours}h${pad(absMinutes)}` : `Remaining: ${absHours}h`);
+            ? `+${fmtDuration(absH, absM, absS)} above!`
+            : `Remaining: ${fmtDuration(absH, absM, absS)}`;
 
         return { text: text + todaySuffix + moneySuffix, isOnTrack: isAhead, totalHours: result.totalHours, totalMinutes: result.totalMinutes, workingHours: result.workingHours };
     }
 
-    let ratioText = showMinutes
-        ? `${result.totalHours}h${pad(result.totalMinutes)}/${result.workingHours}h`
-        : `${result.totalHours}h/${result.workingHours}h`;
+    let ratioText = `${fmtDuration(result.totalHours, result.totalMinutes, result.totalSecs)}/${result.workingHours}h`;
 
     if (displayFormat === 'all') {
         let remainingSeconds = (result.workingHours * 3600) - result.totalSeconds;
         let isAhead = remainingSeconds < 0;
-        let absHours = Math.floor(Math.abs(remainingSeconds) / 3600);
-        let absMinutes = Math.floor((Math.abs(remainingSeconds) % 3600) / 60);
+        let abs = Math.abs(remainingSeconds);
+        let absH = Math.floor(abs / 3600);
+        let absM = Math.floor((abs % 3600) / 60);
+        let absS = Math.floor(abs % 60);
         let remainingText = isAhead
-            ? (showMinutes ? `+${absHours}h${pad(absMinutes)} above!` : `+${absHours}h above!`)
-            : (showMinutes ? `Remaining: ${absHours}h${pad(absMinutes)}` : `Remaining: ${absHours}h`);
+            ? `+${fmtDuration(absH, absM, absS)} above!`
+            : `Remaining: ${fmtDuration(absH, absM, absS)}`;
 
         return { text: `${ratioText} | ${remainingText}` + todaySuffix + moneySuffix, isOnTrack: result.isOnTrack, totalHours: result.totalHours, totalMinutes: result.totalMinutes, workingHours: result.workingHours };
     }

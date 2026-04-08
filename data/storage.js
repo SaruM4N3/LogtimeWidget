@@ -55,7 +55,7 @@ function getCurrentMonth() {
     return `${now.get_year()}-${now.get_month()}`;
 }
 
-function saveDays(bonusDays, giftDays, showMinutes, displayFormat, startColor, endColor, aheadColor, showCurrentDay, birthDate, showMoney, colorGradient) {
+function saveDays(bonusDays, giftDays, showMinutes, displayFormat, startColor, endColor, aheadColor, showCurrentDay, birthDate, showMoney, colorGradient, showSeconds) {
     try {
         ensureStorageDir();
         let data = JSON.stringify({
@@ -70,6 +70,7 @@ function saveDays(bonusDays, giftDays, showMinutes, displayFormat, startColor, e
             birthDate: birthDate || '',
             showMoney: showMoney !== undefined ? showMoney : false,
             colorGradient: colorGradient || 'ease-out',
+            showSeconds: showSeconds !== undefined ? showSeconds : false,
             month: getCurrentMonth()
         }, null, 2);
 
@@ -106,7 +107,8 @@ function loadDays() {
                     showCurrentDay: data.showCurrentDay !== undefined ? data.showCurrentDay : false,
                     birthDate: data.birthDate || '',
                     showMoney: data.showMoney !== undefined ? data.showMoney : false,
-                    colorGradient: data.colorGradient || 'ease-out'
+                    colorGradient: data.colorGradient || 'ease-out',
+                    showSeconds: data.showSeconds !== undefined ? data.showSeconds : false,
                 };
             } else {
                 // Month changed - reset days but keep settings
@@ -120,10 +122,11 @@ function loadDays() {
                 defaults.birthDate = data.birthDate || '';
                 defaults.showMoney = data.showMoney !== undefined ? data.showMoney : false;
                 defaults.colorGradient = data.colorGradient || 'ease-out';
+                defaults.showSeconds = data.showSeconds !== undefined ? data.showSeconds : false;
 
                 saveDays(0, 0, defaults.showMinutes, defaults.displayFormat,
                         defaults.startColor, defaults.endColor, defaults.aheadColor, defaults.showCurrentDay,
-                        defaults.birthDate, defaults.showMoney, defaults.colorGradient);
+                        defaults.birthDate, defaults.showMoney, defaults.colorGradient, defaults.showSeconds);
                 return defaults;
             }
         }
@@ -145,7 +148,8 @@ function getDefaults() {
         showCurrentDay: false,
         birthDate: '',
         showMoney: false,
-        colorGradient: 'ease-out'
+        colorGradient: 'ease-out',
+        showSeconds: false,
     };
 }
 
