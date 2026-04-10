@@ -13,6 +13,7 @@ A GNOME Shell extension that tracks and displays your monthly logtime for 42 Sch
 ```
 git clone https://github.com/SaruM4N3/LogtimeWidget.git
 cd LogtimeWidget
+git switch 42LyonFix
 ./install.sh
 ```
 
