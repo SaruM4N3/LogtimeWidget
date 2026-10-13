@@ -4,42 +4,55 @@
 
 const ExtensionUtils = imports.misc.extensionUtils;
 const Me = ExtensionUtils.getCurrentExtension();
-const GLib = imports.gi.GLib;
-const Soup = imports.gi.Soup;
+const Gio = imports.gi.Gio;
 
+const { MyStorage } = Me.imports.data.storage;
 const { Debug } = Me.imports.utils.debug;
 
-function get_access_token(client_id, client_secret, callback) {
-    let session = new Soup.Session();
-    let message = Soup.Message.new(
-        'POST',
-        'https://api.intra.42.fr/oauth/token'
-    );
+let _loginProc = null;
 
-    let body = `grant_type=client_credentials&client_id=${client_id}&client_secret=${client_secret}`;
+// Opens the login window (connect/login.js) in a separate gjs process.
+// The window writes MyStorage.SESSION_FILE on success; callback(success) runs when it closes.
+function login(callback) {
+    if (_loginProc) {
+        Debug.logInfo('Login window already open');
+        return;
+    }
 
-    message.set_request_body_from_bytes('application/x-www-form-urlencoded',
-        new GLib.Bytes(body));
-    message.request_headers.append('Content-Type', 'application/x-www-form-urlencoded');
+    try {
+        _loginProc = Gio.Subprocess.new(
+            ['gjs', `${Me.path}/connect/login.js`, MyStorage.SESSION_FILE, MyStorage.WEBKIT_DIR],
+            Gio.SubprocessFlags.NONE
+        );
+    } catch (e) {
+        Debug.logError(`Failed to open login window: ${e.message}`);
+        if (callback) callback(false);
+        return;
+    }
 
-    session.queue_message(message, (sess, msg) => {
-        if (msg.status_code === 200) {
-            try {
-                let response = JSON.parse(msg.response_body.data);
-                let accessToken = response.access_token;
-                Debug.logInfo(`New access token: ${accessToken}`);
-                callback(accessToken);
-            } catch (e) {
-                Debug.logError(`Token parse failed: ${e.message}`);
-                callback(null);
-            }
-        } else {
-            Debug.logError(`HTTP ${msg.status_code}: ${msg.reason_phrase}`);
-            callback(null);
+    _loginProc.wait_async(null, (proc, res) => {
+        if (proc !== _loginProc) return; // cancelled
+        let success = false;
+        try {
+            proc.wait_finish(res);
+            success = proc.get_successful();
+        } catch (e) {
+            Debug.logError(`Login window failed: ${e.message}`);
         }
+        _loginProc = null;
+        Debug.logInfo(`Login window closed (success: ${success})`);
+        if (callback) callback(success);
     });
 }
 
+function cancelLogin() {
+    if (_loginProc) {
+        _loginProc.force_exit();
+        _loginProc = null;
+    }
+}
+
 var Connect = {
-    get_access_token
+    login,
+    cancelLogin,
 };

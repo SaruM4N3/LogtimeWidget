@@ -2,11 +2,13 @@ const { Adw, Gio, Gtk, Gdk, GLib } = imports.gi;
 const ExtensionUtils = imports.misc.extensionUtils;
 const Me = ExtensionUtils.getCurrentExtension();
 const { MyStorage } = Me.imports.data.storage;
-const { Calculation } = Me.imports.utils.calculation;
 
 const DEFAULT_START_COLOR = '#fff000';
 const DEFAULT_END_COLOR = '#47ff00';
 const DEFAULT_AHEAD_COLOR = '#00c8ff';
+const DEFAULT_BAR_COLOR = '#47ff00';
+const DEFAULT_BADGE_COLOR = '#facc15';
+const DEFAULT_BADGE_ALERT_COLOR = '#ef4444';
 
 function hexToRGBA(hex) {
     let r = parseInt(hex.slice(1, 3), 16) / 255;
@@ -25,16 +27,8 @@ function rgbaToHex(rgba) {
 function init() {
 }
 
-function saveCredentials(clientIdEntry, clientSecretEntry) {
-    MyStorage.saveCredentials(
-        clientIdEntry.get_text().trim(),
-        clientSecretEntry.get_text().trim()
-    );
-}
-
 function fillPreferencesWindow(window) {
-    let saved = MyStorage.loadDays();
-    let workingDaysInMonth = Calculation.calculateWorkingDaysInMonth();
+    let saved = MyStorage.loadSettings();
 
     const page = new Adw.PreferencesPage({
         title: 'General',
@@ -48,6 +42,40 @@ function fillPreferencesWindow(window) {
         description: 'Configure display format',
     });
     page.add(displayGroup);
+
+    const displayModeRow = new Adw.ActionRow({
+        title: 'Display Mode',
+        subtitle: 'What the panel shows: text, progress bars, or both',
+    });
+
+    const displayModeType = ['text', 'bar', 'combined'];
+
+    const displayModeCombo = new Gtk.DropDown({
+        model: Gtk.StringList.new(['Text', 'Progress Bar', 'Combined']),
+        selected: Math.max(0, displayModeType.indexOf(saved.displayMode)),
+        valign: Gtk.Align.CENTER,
+    });
+
+    displayModeRow.add_suffix(displayModeCombo);
+    displayModeRow.activatable_widget = displayModeCombo;
+    displayGroup.add(displayModeRow);
+
+    const panelPositionRow = new Adw.ActionRow({
+        title: 'Panel Position',
+        subtitle: 'Where the widget sits in the top bar',
+    });
+
+    const panelPositionType = ['left', 'center', 'right'];
+
+    const panelPositionCombo = new Gtk.DropDown({
+        model: Gtk.StringList.new(['Left', 'Center', 'Right']),
+        selected: Math.max(0, panelPositionType.indexOf(saved.panelPosition)),
+        valign: Gtk.Align.CENTER,
+    });
+
+    panelPositionRow.add_suffix(panelPositionCombo);
+    panelPositionRow.activatable_widget = panelPositionCombo;
+    displayGroup.add(panelPositionRow);
 
     const showMinutesRow = new Adw.ActionRow({
         title: 'Show Minutes',
@@ -103,7 +131,7 @@ function fillPreferencesWindow(window) {
 
     const gratifExpanderRow = new Adw.ExpanderRow({
         title: 'Gratification Settings',
-        subtitle: 'Birth date & money display',
+        subtitle: 'Birth date &amp; money display',
     });
     gratifGroup.add(gratifExpanderRow);
 
@@ -161,10 +189,43 @@ function fillPreferencesWindow(window) {
     showMoneyRow.activatable_widget = showMoneySwitch;
     gratifExpanderRow.add_row(showMoneyRow);
 
+    // Show only the settings that matter for the chosen display mode
+    const displayFormatLabels = {
+        text: ['Current / Needed', 'Remaining Hours', 'Combined'],
+        bar: ['Month Progress', 'Next Badge', 'Both'],
+    };
+    const displayFormatSubtitles = {
+        text: 'Choose how to display logtime information',
+        bar: 'Choose which bars to show',
+        combined: 'Text format; bars follow it: month progress / next badge / both',
+    };
+
+    function updateVisibility() {
+        let mode = displayModeType[displayModeCombo.get_selected()];
+        let showText = mode !== 'bar';
+
+        showMinutesRow.visible = showText;
+        showCurrentDayRow.visible = showText;
+        gratifGroup.visible = showText;
+
+        let labels = displayFormatLabels[showText ? 'text' : 'bar'];
+        let model = displayFormatCombo.get_model();
+        if (model.get_string(0) !== labels[0]) {
+            let selected = displayFormatCombo.get_selected();
+            model.splice(0, model.get_n_items(), labels);
+            displayFormatCombo.set_selected(selected);
+        }
+        displayFormatRow.title = showText ? 'Display Format' : 'Bars';
+        displayFormatRow.subtitle = displayFormatSubtitles[mode];
+
+        colorGroup.visible = showText;
+        barColorGroup.visible = mode !== 'text';
+    }
+
     // ===== Color Settings Group =====
     const colorGroup = new Adw.PreferencesGroup({
-        title: 'Color Gradient',
-        description: 'Customize the color gradient based on progress',
+        title: 'Text Colors',
+        description: 'Color gradient of the panel text, based on progress',
     });
     page.add(colorGroup);
 
@@ -392,65 +453,72 @@ function fillPreferencesWindow(window) {
     resetColorsRow.activatable_widget = resetColorsButton;
     colorGroup.add(resetColorsRow);
 
-    // ===== Days Management Group =====
-    const daysGroup = new Adw.PreferencesGroup({
-        title: 'Days Management',
-        description: 'Configure bonus and gift days for logtime calculation',
+    // ===== Progress Bar Colors Group =====
+    const barColorGroup = new Adw.PreferencesGroup({
+        title: 'Progress Bar Colors',
+        description: 'Colors of the month and badge bars',
     });
-    page.add(daysGroup);
+    page.add(barColorGroup);
 
-    const bonusDaysRow = new Adw.ActionRow({
-        title: 'Bonus Days',
-        subtitle: 'Each bonus day adds 7 hours to your total logtime',
+    function addColorRow(title, subtitle, color) {
+        const row = new Adw.ActionRow({ title, subtitle });
+        const button = new Gtk.ColorButton({
+            rgba: hexToRGBA(color),
+            valign: Gtk.Align.CENTER,
+        });
+        row.add_suffix(button);
+        row.activatable_widget = button;
+        barColorGroup.add(row);
+        return button;
+    }
+
+    const barColorButton = addColorRow('Main Bar', 'Month progress bar and its percentage',
+        saved.barColor || DEFAULT_BAR_COLOR);
+    const badgeColorButton = addColorRow('Badge Bar', 'Time left before your next badge',
+        saved.badgeColor || DEFAULT_BADGE_COLOR);
+    const badgeAlertColorButton = addColorRow('Badge Alert', 'Blinking color when the session is about to expire',
+        saved.badgeAlertColor || DEFAULT_BADGE_ALERT_COLOR);
+
+    const resetBarColorsRow = new Adw.ActionRow({
+        title: 'Reset Colors',
+        subtitle: 'Restore default bar colors',
     });
 
-    const bonusSpinButton = new Gtk.SpinButton({
-        adjustment: new Gtk.Adjustment({
-            lower: 0,
-            upper: workingDaysInMonth,
-            step_increment: 1,
-            value: saved.bonusDays,
-        }),
+    const resetBarColorsButton = new Gtk.Button({
+        label: 'Reset',
         valign: Gtk.Align.CENTER,
     });
 
-    bonusDaysRow.add_suffix(bonusSpinButton);
-    bonusDaysRow.activatable_widget = bonusSpinButton;
-    daysGroup.add(bonusDaysRow);
-
-    const giftDaysRow = new Adw.ActionRow({
-        title: 'Gift Days',
-        subtitle: 'Each gift day reduces required working hours by 7h',
+    resetBarColorsButton.connect('clicked', () => {
+        barColorButton.set_rgba(hexToRGBA(DEFAULT_BAR_COLOR));
+        badgeColorButton.set_rgba(hexToRGBA(DEFAULT_BADGE_COLOR));
+        badgeAlertColorButton.set_rgba(hexToRGBA(DEFAULT_BADGE_ALERT_COLOR));
+        saveAllSettings();
     });
 
-    const giftSpinButton = new Gtk.SpinButton({
-        adjustment: new Gtk.Adjustment({
-            lower: 0,
-            upper: workingDaysInMonth,
-            step_increment: 1,
-            value: saved.giftDays,
-        }),
-        valign: Gtk.Align.CENTER,
-    });
+    resetBarColorsRow.add_suffix(resetBarColorsButton);
+    resetBarColorsRow.activatable_widget = resetBarColorsButton;
+    barColorGroup.add(resetBarColorsRow);
 
-    giftDaysRow.add_suffix(giftSpinButton);
-    giftDaysRow.activatable_widget = giftSpinButton;
-    daysGroup.add(giftDaysRow);
+    updateVisibility();
 
     function saveAllSettings() {
-        MyStorage.saveDays(
-            bonusSpinButton.get_value(),
-            giftSpinButton.get_value(),
-            showMinutesSwitch.get_active(),
-            displayFormatType[displayFormatCombo.get_selected()],
-            rgbaToHex(startColorButton.get_rgba()),
-            rgbaToHex(endColorButton.get_rgba()),
-            rgbaToHex(aheadColorButton.get_rgba()),
-            showCurrentDaySwitch.get_active(),
-            currentBirthDate,
-            showMoneySwitch.get_active(),
-            gradientCurveType[gradientCurveCombo.get_selected()]
-        );
+        MyStorage.saveSettings({
+            showMinutes: showMinutesSwitch.get_active(),
+            displayFormat: displayFormatType[displayFormatCombo.get_selected()],
+            startColor: rgbaToHex(startColorButton.get_rgba()),
+            endColor: rgbaToHex(endColorButton.get_rgba()),
+            aheadColor: rgbaToHex(aheadColorButton.get_rgba()),
+            showCurrentDay: showCurrentDaySwitch.get_active(),
+            birthDate: currentBirthDate,
+            showMoney: showMoneySwitch.get_active(),
+            colorGradient: gradientCurveType[gradientCurveCombo.get_selected()],
+            displayMode: displayModeType[displayModeCombo.get_selected()],
+            panelPosition: panelPositionType[panelPositionCombo.get_selected()],
+            barColor: rgbaToHex(barColorButton.get_rgba()),
+            badgeColor: rgbaToHex(badgeColorButton.get_rgba()),
+            badgeAlertColor: rgbaToHex(badgeAlertColorButton.get_rgba()),
+        });
     }
 
     showMinutesSwitch.connect('state-set', () => {
@@ -469,108 +537,48 @@ function fillPreferencesWindow(window) {
     });
 
     displayFormatCombo.connect('notify::selected', saveAllSettings);
+    displayModeCombo.connect('notify::selected', () => { saveAllSettings(); updateVisibility(); });
+    panelPositionCombo.connect('notify::selected', saveAllSettings);
     gradientCurveCombo.connect('notify::selected', () => { saveAllSettings(); previewArea.queue_draw(); curveGraph.queue_draw(); });
     startColorButton.connect('color-set', () => { saveAllSettings(); previewArea.queue_draw(); });
     endColorButton.connect('color-set', () => { saveAllSettings(); previewArea.queue_draw(); });
     aheadColorButton.connect('color-set', saveAllSettings);
-    bonusSpinButton.connect('value-changed', saveAllSettings);
-    giftSpinButton.connect('value-changed', saveAllSettings);
+    [barColorButton, badgeColorButton, badgeAlertColorButton].forEach((b) => b.connect('color-set', saveAllSettings));
 
-    // Reset Days Button
-    const resetRow = new Adw.ActionRow({
-        title: 'Reset Days',
-        subtitle: 'Reset bonus and gift days to 0',
+    // ===== Account Group =====
+    const accountGroup = new Adw.PreferencesGroup({
+        title: 'Account (attendance.42lyon.fr)',
+        description: 'The widget opens a login window with your 42 Intra account when needed',
     });
+    page.add(accountGroup);
 
-    const resetButton = new Gtk.Button({
-        label: 'Reset',
+    const accountRow = new Adw.ActionRow({
+        title: 'Session',
+    });
+    const updateAccountRow = () => {
+        let session = MyStorage.loadSession();
+        accountRow.subtitle = session.cookie
+            ? `Logged in since ${new Date(session.savedAt).toLocaleString()}`
+            : 'Not logged in';
+    };
+    updateAccountRow();
+
+    const logoutButton = new Gtk.Button({
+        label: 'Log out / Switch account',
         valign: Gtk.Align.CENTER,
         css_classes: ['destructive-action'],
     });
-
-    resetButton.connect('clicked', () => {
-        bonusSpinButton.set_value(0);
-        giftSpinButton.set_value(0);
-        saveAllSettings();
+    logoutButton.connect('clicked', () => {
+        MyStorage.clearSession();
+        updateAccountRow();
     });
-
-    resetRow.add_suffix(resetButton);
-    resetRow.activatable_widget = resetButton;
-    daysGroup.add(resetRow);
-
-    // ===== API Setup Guide Group =====
-    const setupGroup = new Adw.PreferencesGroup({
-        title: 'How to get API credentials',
-    });
-    page.add(setupGroup);
-
-    const setupRow = new Adw.ActionRow({
-        title: 'Setup Guide',
-        subtitle: 'github.com/SaruM4N3/LogtimeWidget#first-time-setup',
-    });
-    const setupButton = new Gtk.Button({
-        label: 'Open',
-        valign: Gtk.Align.CENTER,
-    });
-    setupButton.connect('clicked', () => {
-        Gio.AppInfo.launch_default_for_uri('https://github.com/SaruM4N3/LogtimeWidget#first-time-setup', null);
-    });
-    setupRow.add_suffix(setupButton);
-    setupGroup.add(setupRow);
-
-    // ===== API Credentials Group =====
-    let savedCreds = MyStorage.loadCredentials();
-
-    const credsGroup = new Adw.PreferencesGroup({
-        title: 'API Credentials (42 Intra)',
-    });
-    page.add(credsGroup);
-
-    const clientIdRow = new Adw.ActionRow({
-        title: 'Client ID',
-        subtitle: 'Your 42 API application UID',
-    });
-    const clientIdEntry = new Gtk.Entry({
-        text: savedCreds.clientId || '',
-        placeholder_text: 'u-s4t2ud-...',
-        valign: Gtk.Align.CENTER,
-        hexpand: true,
-    });
-    clientIdRow.add_suffix(clientIdEntry);
-    credsGroup.add(clientIdRow);
-
-    const clientSecretRow = new Adw.ActionRow({
-        title: 'Client Secret',
-        subtitle: 'Your 42 API application secret',
-    });
-    const clientSecretEntry = new Gtk.PasswordEntry({
-        text: savedCreds.clientSecret || '',
-        show_peek_icon: true,
-        valign: Gtk.Align.CENTER,
-        hexpand: true,
-    });
-    clientSecretRow.add_suffix(clientSecretEntry);
-    credsGroup.add(clientSecretRow);
-
-    const saveCredsRow = new Adw.ActionRow({
-        title: 'Save Credentials',
-        subtitle: 'Saves and reconnects automatically',
-    });
-    const saveCredsButton = new Gtk.Button({
-        label: 'Save',
-        valign: Gtk.Align.CENTER,
-        css_classes: ['suggested-action'],
-    });
-    saveCredsButton.connect('clicked', () => {
-        saveCredentials(clientIdEntry, clientSecretEntry);
-    });
-    saveCredsRow.add_suffix(saveCredsButton);
-    credsGroup.add(saveCredsRow);
+    accountRow.add_suffix(logoutButton);
+    accountGroup.add(accountRow);
 
     // ===== Info Group =====
     const infoGroup = new Adw.PreferencesGroup({
         title: 'Storage Information',
-        description: 'Days are automatically saved and reset each month',
+        description: 'Settings are saved automatically. Logtime, absences and capsules come from attendance.42lyon.fr',
     });
     page.add(infoGroup);
 

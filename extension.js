@@ -12,37 +12,30 @@ const { Settings } = Me.imports.utils.settings;
 const { Debug } = Me.imports.utils.debug;
 const { Menu } = Me.imports.utils.menu;
 
-const username = GLib.get_user_name();
+const ATTENDANCE_DATA_URL = 'https://attendance.42lyon.fr/me/__data.json';
+// Must match .logtime-bar width in stylesheet.css
+const BAR_WIDTH = 100;
+// The badge bar blinks red when the session expires in less than this
+const BADGE_WARNING_MS = 15 * 60 * 1000;
+const BLINK_INTERVAL_MS = 500;
 
 class LogWidget {
 	constructor() {
-		let saved = MyStorage.loadDays();
-		this.bonusDays = saved.bonusDays;
-		this.giftDays = saved.giftDays;
-		this.showMinutes = saved.showMinutes !== undefined ? saved.showMinutes : true;
-		this.displayFormat = saved.displayFormat || 'ratio';
-		this.showCurrentDay = saved.showCurrentDay !== undefined ? saved.showCurrentDay : false;
-		this.birthDate = saved.birthDate || '';
-		this.showMoney = saved.showMoney !== undefined ? saved.showMoney : false;
-		this.colorGradient = saved.colorGradient || 'exponential';
-		this.startColor = saved.startColor || '#ef4444';
-		this.endColor = saved.endColor || '#4ade80';
-		this.aheadColor = saved.aheadColor || '#00c8ff';
+		this._applySettings(MyStorage.loadSettings());
 		this._refreshTimeoutId = null;
-		this._tokenRefreshTimeoutId = null;
 		this._checkTimeout = null;
+		this._blinkTimeoutId = null;
+		this._blinkOn = false;
 		this._cachedData = null;
 		this._fileMonitor = null;
-		this._credsMonitor = null;
+		this._sessionMonitor = null;
 		this._updateAvailable = false;
-
-		Debug.logInfo(`Loaded from storage: bonus=${this.bonusDays}, gift=${this.giftDays}`);
 	}
 
 	enable() {
 		Menu.setupApp(this);
 		this._setupStorageMonitoring();
-		this._apiMethod();
+		this._connect();
 
 		this.updateManager = new Updater.UpdateManager();
 
@@ -61,17 +54,19 @@ class LogWidget {
 	}
 
 	disable() {
-		[this._fileMonitor, this._credsMonitor].forEach((m) => {
+		Connect.cancelLogin();
+		this._stopBlink();
+
+		[this._fileMonitor, this._sessionMonitor].forEach((m) => {
 			if (m) m.cancel();
 		});
 		this._fileMonitor = null;
-		this._credsMonitor = null;
+		this._sessionMonitor = null;
 
-		[this._refreshTimeoutId, this._tokenRefreshTimeoutId, this._checkTimeout].forEach((id) => {
+		[this._refreshTimeoutId, this._checkTimeout].forEach((id) => {
 			if (id) GLib.source_remove(id);
 		});
 		this._refreshTimeoutId = null;
-		this._tokenRefreshTimeoutId = null;
 		this._checkTimeout = null;
 
 		if (this._indicator) {
@@ -80,89 +75,95 @@ class LogWidget {
 		}
 	}
 
+	// Settings come complete from MyStorage.loadSettings (defaults live in storage.js)
+	_applySettings(saved) {
+		this.showMinutes = saved.showMinutes;
+		this.displayFormat = saved.displayFormat;
+		this.showCurrentDay = saved.showCurrentDay;
+		this.birthDate = saved.birthDate;
+		this.showMoney = saved.showMoney;
+		this.colorGradient = saved.colorGradient;
+		this.startColor = saved.startColor;
+		this.endColor = saved.endColor;
+		this.aheadColor = saved.aheadColor;
+		this.displayMode = saved.displayMode;
+		this.panelPosition = saved.panelPosition;
+		this.barColor = saved.barColor;
+		this.badgeColor = saved.badgeColor;
+		this.badgeAlertColor = saved.badgeAlertColor;
+	}
+
 	_setupStorageMonitoring() {
 		this._fileMonitor = Settings.setupStorageMonitoring(() => {
-			let saved = MyStorage.loadDays();
-			this.bonusDays = saved.bonusDays;
-			this.giftDays = saved.giftDays;
-			this.showMinutes = saved.showMinutes;
-			this.displayFormat = saved.displayFormat || 'ratio';
-			this.showCurrentDay = saved.showCurrentDay !== undefined ? saved.showCurrentDay : false;
-			this.birthDate = saved.birthDate || '';
-			this.showMoney = saved.showMoney !== undefined ? saved.showMoney : false;
-			this.colorGradient = saved.colorGradient || 'exponential';
-			this.startColor = saved.startColor;
-			this.endColor = saved.endColor;
-			this.aheadColor = saved.aheadColor;
+			let previousPosition = this.panelPosition;
+			this._applySettings(MyStorage.loadSettings());
+			if (this.panelPosition !== previousPosition)
+				Menu.moveToPanel(this, this.panelPosition);
 			Debug.logInfo(`Settings reloaded: format=${this.displayFormat}`);
 			this._updateLogtime();
 		});
 
-		let credsFile = Gio.File.new_for_path(MyStorage.CREDENTIALS_FILE);
-		let credsDir = Gio.File.new_for_path(GLib.path_get_dirname(MyStorage.CREDENTIALS_FILE));
-		this._credsMonitor = credsDir.monitor_directory(Gio.FileMonitorFlags.NONE, null);
-		this._credsMonitor.connect('changed', (_monitor, file, _otherFile, eventType) => {
-			if (file && file.equal(credsFile)) {
-				Debug.logInfo(`Credentials changed (Event: ${eventType}), reconnecting...`);
+		// Reconnect when the login window saves a new session, or when it's cleared from Settings
+		let sessionFile = Gio.File.new_for_path(MyStorage.SESSION_FILE);
+		let sessionDir = Gio.File.new_for_path(GLib.path_get_dirname(MyStorage.SESSION_FILE));
+		this._sessionMonitor = sessionDir.monitor_directory(Gio.FileMonitorFlags.NONE, null);
+		this._sessionMonitor.connect('changed', (_monitor, file, _otherFile, eventType) => {
+			if (file && file.equal(sessionFile) &&
+				(eventType === Gio.FileMonitorEvent.CHANGES_DONE_HINT || eventType === Gio.FileMonitorEvent.DELETED)) {
+				Debug.logInfo(`Session changed (Event: ${eventType}), reconnecting...`);
 				GLib.timeout_add(GLib.PRIORITY_DEFAULT, 200, () => {
-					this._apiMethod();
+					this._connect();
 					return GLib.SOURCE_REMOVE;
 				});
 			}
 		});
 	}
 
-	_apiMethod() {
-		let creds = MyStorage.loadCredentials();
-		if (!creds.clientId || !creds.clientSecret) {
-			this._label.set_text('Set API keys in Settings');
-			this._label.set_style('color: #f59e0b; font-weight: 600;');
-			Gio.AppInfo.launch_default_for_uri('https://github.com/SaruM4N3/LogtimeWidget#first-time-setup', null);
+	_stopRefresh() {
+		if (this._refreshTimeoutId) {
+			GLib.source_remove(this._refreshTimeoutId);
+			this._refreshTimeoutId = null;
+		}
+	}
+
+	_connect() {
+		this._stopRefresh();
+
+		let session = MyStorage.loadSession();
+		if (!session.cookie) {
+			this._login();
 			return;
 		}
 
-		Connect.get_access_token(creds.clientId, creds.clientSecret, (token) => {
-			if (!token) {
-				this._label.set_text('Auth failed: check API keys');
+		this._hideBars();
+		this._label.set_text('Connecting...');
+		this._label.set_style('color: #10b981; font-weight: 600;');
+
+		this._refreshTimeoutId = Data.startPeriodicRefresh(
+			ATTENDANCE_DATA_URL,
+			session.cookie,
+			60,
+			(data) => {
+				this._cachedData = data;
+				this._updateLogtime();
+			},
+			() => this._login()
+		);
+	}
+
+	// Opens the attendance login window; the session monitor reconnects once it saves the cookie
+	_login() {
+		this._stopRefresh();
+		this._hideBars();
+		this._label.set_text('Log in to Attendance...');
+		this._label.set_style('color: #f59e0b; font-weight: 600;');
+
+		Connect.login((success) => {
+			if (!success) {
+				this._hideBars();
+				this._label.set_text('Not logged in: click to reconnect');
 				this._label.set_style('color: #ef4444; font-weight: 600;');
-				return;
 			}
-
-			Debug.logSuccess('Got access token, starting periodic refresh');
-			this._label.set_text('✓ Connected');
-			this._label.set_style('color: #10b981; font-weight: 600;');
-
-			const apiUrl = `https://api.intra.42.fr/v2/users/${username}/locations?per_page=100`;
-
-			if (this._refreshTimeoutId) {
-				GLib.source_remove(this._refreshTimeoutId);
-				this._refreshTimeoutId = null;
-			}
-			if (this._tokenRefreshTimeoutId) {
-				GLib.source_remove(this._tokenRefreshTimeoutId);
-				this._tokenRefreshTimeoutId = null;
-			}
-
-			this._refreshTimeoutId = Data.startPeriodicRefresh(
-				apiUrl,
-				token,
-				60,
-				(data) => {
-					this._cachedData = data;
-					this._updateLogtime();
-				},
-				() => {
-					this._label.set_text('Token expired, reconnecting...');
-					this._apiMethod();
-				}
-			);
-
-			// Proactively refresh the token after 1h50 (token expires in 2h)
-			this._tokenRefreshTimeoutId = GLib.timeout_add_seconds(GLib.PRIORITY_DEFAULT, 6600, () => {
-				Debug.logInfo('Proactive token refresh');
-				this._apiMethod();
-				return GLib.SOURCE_REMOVE;
-			});
 		});
 	}
 
@@ -172,10 +173,9 @@ class LogWidget {
 			return;
 		}
 
+		let stats = Calculation.calculateStats(this._cachedData);
 		let result = Calculation.formatTimeDisplay(
-			this._cachedData,
-			this.bonusDays || 0,
-			this.giftDays || 0,
+			stats,
 			this.showMinutes,
 			this.displayFormat,
 			this.showCurrentDay,
@@ -184,11 +184,99 @@ class LogWidget {
 		);
 
 		this._label.set_text(result.text);
+		this._label.visible = this.displayMode !== 'bar';
 
-		let percentage = Math.min(1.0, Math.max(0.0, result.totalHours / result.workingHours));
-		this._label.set_style(`color: ${this._interpolateColor(percentage)}; font-weight: 600;`);
+		let percentage = Math.min(1.0, Math.max(0.0, result.percent / 100));
+		let color = this._interpolateColor(percentage);
+		this._label.set_style(`color: ${color}; font-weight: 600;`);
+		this._updateBars(percentage);
 
 		Debug.logSuccess(`Updated: ${result.text} [minutes:${this.showMinutes}, format:${this.displayFormat}]`);
+	}
+
+	// Display mode 'bar' or 'combined': the display format picks the bars,
+	// ratio -> month progress, remaining -> time before next badge, all -> both
+	_updateBars(percentage) {
+		let showBars = this.displayMode !== 'text';
+		let showMonth = showBars && this.displayFormat !== 'remaining';
+		let showBadge = showBars && this.displayFormat !== 'ratio';
+
+		if (showMonth) {
+			this._fillBar(this._monthBar, percentage, this.barColor);
+			this._monthLabel.set_text(`${Math.round(percentage * 100)}%`);
+			this._monthLabel.set_style(`color: ${this.barColor}; font-weight: 600; margin-right: 6px;`);
+		}
+		this._monthBar.visible = showMonth;
+		this._monthLabel.visible = showMonth;
+
+		this._badgeBar.visible = showBadge;
+		this._badgeLabel.visible = showBadge;
+
+		if (!showBadge || !this._renderBadge())
+			this._stopBlink();
+		else
+			this._startBlink();
+	}
+
+	// Draws the badge bar and countdown; returns true when the session is about to expire
+	_renderBadge() {
+		let badge = Calculation.getBadgeStatus(this._cachedData);
+		let ratio = badge.ttlMs > 0 ? badge.remainingMs / badge.ttlMs : 0;
+		let warning = badge.active && badge.remainingMs <= BADGE_WARNING_MS;
+
+		if (warning) {
+			let seconds = Math.ceil(badge.remainingMs / 1000);
+			let countdown = `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
+			this._fillBar(this._badgeBar, ratio, this.badgeAlertColor);
+			this._badgeLabel.set_text(`Badge! ${countdown}`);
+			this._badgeLabel.set_style(`color: ${this.badgeAlertColor}; font-weight: 700;`);
+			return true;
+		}
+
+		this._fillBar(this._badgeBar, ratio, this.badgeColor);
+		this._badgeLabel.set_text(badge.active ? Calculation.formatDuration(badge.remainingMs, true) : 'No session');
+		this._badgeLabel.set_style(`color: ${badge.active ? this.badgeColor : '#9ca3af'}; font-weight: 600;`);
+		return false;
+	}
+
+	// Blinks the badge bar and countdown, refreshing the countdown each tick until the warning ends
+	_startBlink() {
+		if (this._blinkTimeoutId) return;
+		this._blinkTimeoutId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, BLINK_INTERVAL_MS, () => {
+			if (!this._badgeBar.visible || !this._renderBadge()) {
+				this._blinkTimeoutId = null;
+				this._stopBlink();
+				return GLib.SOURCE_REMOVE;
+			}
+			this._blinkOn = !this._blinkOn;
+			let opacity = this._blinkOn ? 60 : 255;
+			this._badgeBar.opacity = opacity;
+			this._badgeLabel.opacity = opacity;
+			return GLib.SOURCE_CONTINUE;
+		});
+	}
+
+	_stopBlink() {
+		if (this._blinkTimeoutId) {
+			GLib.source_remove(this._blinkTimeoutId);
+			this._blinkTimeoutId = null;
+		}
+		this._blinkOn = false;
+		if (this._badgeBar) this._badgeBar.opacity = 255;
+		if (this._badgeLabel) this._badgeLabel.opacity = 255;
+	}
+
+	_fillBar(bar, ratio, color) {
+		let fill = Math.round(BAR_WIDTH * Math.min(1, Math.max(0, ratio)));
+		bar.fill.set_style(`width: ${fill}px; background-color: ${color};`);
+		bar.fill.visible = fill > 0;
+	}
+
+	// Back to the plain label, for status messages (connecting, login...)
+	_hideBars() {
+		this._stopBlink();
+		this._label.show();
+		[this._monthBar, this._monthLabel, this._badgeBar, this._badgeLabel].forEach((w) => w.hide());
 	}
 
 	_applyGradientCurve(t) {

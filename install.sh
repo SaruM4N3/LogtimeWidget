@@ -15,21 +15,20 @@ echo -e "${GREEN}   Logtime Widget Installer (Dev Mode)  ${NC}"
 echo -e "${GREEN}========================================${NC}"
 echo ""
 
-EXTENSION_UUID="LogtimeWidget@zsonie"
+EXTENSION_UUID="soft-brightness@fifi.org"
 SOURCE_DIR="$(pwd)"  # this repo
 INSTALL_DIR="$HOME/.local/share/gnome-shell/extensions/$EXTENSION_UUID"
 
-CREDENTIALS_FILE="$INSTALL_DIR/utils/credentials.json"
+SESSION_FILE="$INSTALL_DIR/utils/session.json"
 SETTINGS_FILE="$INSTALL_DIR/utils/saved_days.json"
-SAVED_CREDS=""
+SAVED_SESSION=""
 SAVED_SETTINGS=""
 
-if [ -f "$CREDENTIALS_FILE" ]; then
-    SAVED_CREDS=$(cat "$CREDENTIALS_FILE")
-    echo -e "${GREEN}Existing credentials found — will be preserved.${NC}"
+if [ -f "$SESSION_FILE" ]; then
+    SAVED_SESSION=$(cat "$SESSION_FILE")
+    echo -e "${GREEN}Existing login session found — will be preserved.${NC}"
 else
-    echo -e "${YELLOW}No existing credentials found.${NC}"
-    echo -e "${YELLOW}  → Setup guide: https://github.com/SaruM4N3/LogtimeWidget#first-time-setup${NC}"
+    echo -e "${YELLOW}No login session found — a login window will open when the widget starts.${NC}"
 fi
 
 if [ -f "$SETTINGS_FILE" ]; then
@@ -53,9 +52,9 @@ fi
 
 mkdir -p "$INSTALL_DIR/utils"
 
-if [ -n "$SAVED_CREDS" ]; then
-    echo "$SAVED_CREDS" > "$CREDENTIALS_FILE"
-    echo -e "${GREEN}Credentials restored.${NC}"
+if [ -n "$SAVED_SESSION" ]; then
+    echo "$SAVED_SESSION" > "$SESSION_FILE"
+    echo -e "${GREEN}Login session restored.${NC}"
 fi
 
 if [ -n "$SAVED_SETTINGS" ]; then

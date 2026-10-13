@@ -1,5 +1,5 @@
 {
-  "uuid": "LogtimeWidget@zsonie",
+  "uuid": "soft-brightness@fifi.org",
   "name": "Logtime Widget",
   "description": "A simple widget to check your {current logtime of the month}/{intended logtime of the month}.",
   "shell-version": ["42"],
