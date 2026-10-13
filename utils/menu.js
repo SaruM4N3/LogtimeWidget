@@ -1,8 +1,9 @@
 /* menu.js
- * UI setup: panel button, menu items, day submenus
+ * UI setup: panel button, menu items
  */
 
 const Clutter = imports.gi.Clutter;
+const Gio = imports.gi.Gio;
 const ExtensionUtils = imports.misc.extensionUtils;
 const Main = imports.ui.main;
 const Me = ExtensionUtils.getCurrentExtension();
@@ -10,11 +11,17 @@ const PanelMenu = imports.ui.panelMenu;
 const PopupMenu = imports.ui.popupMenu;
 const St = imports.gi.St;
 
-const { MyStorage } = Me.imports.data.storage;
-const { Calculation } = Me.imports.utils.calculation;
 const { Debug } = Me.imports.utils.debug;
 
 const APP_NAME = '[LogtimeWidget]';
+const ATTENDANCE_URL = 'https://attendance.42lyon.fr/me';
+// Index in the panel box: end of the left box, after the clock in the center, first in the right box
+const PANEL_INDEX = { left: -1, center: 1, right: 0 };
+
+function _panelBox(position) {
+	return { left: Main.panel._leftBox, center: Main.panel._centerBox, right: Main.panel._rightBox }[position]
+		|| Main.panel._centerBox;
+}
 
 function setupApp(widget) {
 	widget._indicator = new PanelMenu.Button(0.0, Me.metadata.name, false);
@@ -35,18 +42,33 @@ function setupApp(widget) {
 		y_align: St.Align.MIDDLE,
 	});
 
+	// Progress bars (Show Progress Bar), filled by LogWidget._updateBars
+	widget._monthBar = _createBar();
+	widget._monthLabel = new St.Label({
+		y_align: Clutter.ActorAlign.CENTER,
+		visible: false,
+	});
+	widget._badgeBar = _createBar();
+	widget._badgeLabel = new St.Label({
+		y_align: Clutter.ActorAlign.CENTER,
+		visible: false,
+	});
+
+	widget._box.add_child(widget._monthBar);
+	widget._box.add_child(widget._monthLabel);
 	widget._box.add_child(widget._label);
+	widget._box.add_child(widget._badgeBar);
+	widget._box.add_child(widget._badgeLabel);
 	widget._indicator.add_child(widget._box);
-	Main.panel.addToStatusArea(APP_NAME, widget._indicator, 1, 'center');
+	let position = PANEL_INDEX[widget.panelPosition] !== undefined ? widget.panelPosition : 'center';
+	Main.panel.addToStatusArea(APP_NAME, widget._indicator, PANEL_INDEX[position], position);
 
 	setupMenu(widget);
 }
 
 function setupMenu(widget) {
-	widget._indicator.menu.addMenuItem(_createMenuItem('Refresh / Reconnect', () => widget._apiMethod()));
-	widget._indicator.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
-	_setupDaySubmenu(widget, 'Bonus Days', () => widget.bonusDays, (v) => { widget.bonusDays = v; });
-	_setupDaySubmenu(widget, 'Gift Days', () => widget.giftDays, (v) => { widget.giftDays = v; });
+	widget._indicator.menu.addMenuItem(_createMenuItem('Refresh / Reconnect', () => widget._connect()));
+	widget._indicator.menu.addMenuItem(_createMenuItem('Open Attendance', () => openAttendance()));
 	widget._indicator.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
 	widget._indicator.menu.addMenuItem(_createMenuItem('Restart widget', () => restartWidget()));
 	widget._indicator.menu.addMenuItem(_createMenuItem('Settings', () => openSettings()));
@@ -61,61 +83,21 @@ function setupMenu(widget) {
 	widget._indicator.menu.addMenuItem(widget.updateItem);
 }
 
+function _createBar() {
+	let bar = new St.Widget({
+		style_class: 'logtime-bar',
+		y_align: Clutter.ActorAlign.CENTER,
+		visible: false,
+	});
+	bar.fill = new St.Widget({ style_class: 'logtime-bar-fill' });
+	bar.add_child(bar.fill);
+	return bar;
+}
+
 function _createMenuItem(label, callback) {
 	let item = new PopupMenu.PopupMenuItem(label);
 	item.connect('activate', callback);
 	return item;
-}
-
-function _setupDaySubmenu(widget, title, getVal, setVal) {
-	let maxDays = Calculation.calculateWorkingDaysInMonth();
-	let item = new PopupMenu.PopupSubMenuMenuItem(title);
-	widget._indicator.menu.addMenuItem(item);
-
-	let controlItem = new PopupMenu.PopupBaseMenuItem({ reactive: false });
-	let box = new St.BoxLayout({
-		vertical: false,
-		x_expand: true,
-		x_align: Clutter.ActorAlign.CENTER,
-		y_align: Clutter.ActorAlign.CENTER,
-	});
-
-	let countLabel = new St.Label({
-		text: String(getVal()),
-		style: 'font-size: 14px; font-weight: bold; text-align: center; padding: 0 8px;',
-		y_align: Clutter.ActorAlign.CENTER,
-		x_align: Clutter.ActorAlign.CENTER,
-	});
-
-	let makeBtn = (label, onClick) => {
-		let btn = new St.Button({ label, style_class: 'button', x_expand: false });
-		btn.connect('clicked', onClick);
-		return btn;
-	};
-
-	let save = () => {
-		MyStorage.saveDays(widget.bonusDays, widget.giftDays, widget.showMinutes, widget.displayFormat, widget.startColor, widget.endColor, widget.aheadColor, widget.showCurrentDay, widget.birthDate, widget.showMoney, widget.colorGradient);
-		widget._updateLogtime();
-	};
-
-	box.add_child(makeBtn('−', () => {
-		if (getVal() > 0) {
-			setVal(getVal() - 1);
-			countLabel.set_text(String(getVal()));
-			save();
-		}
-	}));
-	box.add_child(countLabel);
-	box.add_child(makeBtn('+', () => {
-		if (getVal() < maxDays) {
-			setVal(getVal() + 1);
-			countLabel.set_text(String(getVal()));
-			save();
-		}
-	}));
-
-	controlItem.actor.add_child(box);
-	item.menu.addMenuItem(controlItem);
 }
 
 function restartWidget() {
@@ -132,6 +114,15 @@ function restartWidget() {
 	}
 }
 
+// Opens the attendance page in the user's default browser
+function openAttendance() {
+	try {
+		Gio.AppInfo.launch_default_for_uri(ATTENDANCE_URL, global.create_app_launch_context(0, -1));
+	} catch (e) {
+		Debug.logError(`Failed to open attendance: ${e}`);
+	}
+}
+
 function openSettings() {
 	try {
 		ExtensionUtils.openPrefs();
@@ -140,6 +131,18 @@ function openSettings() {
 	}
 }
 
+// Moves the widget to another panel box without recreating it
+function moveToPanel(widget, position) {
+	if (!widget._indicator || PANEL_INDEX[position] === undefined) return;
+	let container = widget._indicator.container;
+	let box = _panelBox(position);
+	if (container.get_parent() === box) return;
+	if (container.get_parent()) container.get_parent().remove_child(container);
+	let index = PANEL_INDEX[position];
+	box.insert_child_at_index(container, index < 0 ? box.get_n_children() : index);
+}
+
 var Menu = {
 	setupApp,
+	moveToPanel,
 };

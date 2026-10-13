@@ -1,5 +1,6 @@
 /* calculation.js
-* utils for calculation and time parsing
+* logtime stats, ported from attendance.42lyon.fr (AttendanceCompiler.compileStats)
+* so the widget shows exactly the same done/todo as the site
 */
 
 const GLib = imports.gi.GLib;
@@ -7,81 +8,217 @@ const ExtensionUtils = imports.misc.extensionUtils;
 const Me = ExtensionUtils.getCurrentExtension();
 const { Debug } = Me.imports.utils.debug;
 
-function getFrenchPublicHolidays(year) {
-    let holidays = [
-        `${year}-01-01`, // Jour de l'an
-        `${year}-05-01`, // Fête du Travail
-        `${year}-05-08`, // Victoire 1945
-        `${year}-07-14`, // Fête nationale
-        `${year}-08-15`, // Assomption
-        `${year}-11-01`, // Toussaint
-        `${year}-11-11`, // Armistice 1918
-        `${year}-12-25`, // Noël
+const HOUR_MS = 3600 * 1000;
+const WORKDAY_MS = 7 * HOUR_MS;
+// A workday counts as a closure day when closures cover at least 7h of 08:00-20:00
+const CLOSURE_WINDOW_START = 8;
+const CLOSURE_WINDOW_END = 20;
+
+const TZ = GLib.TimeZone.new_identifier
+    ? (GLib.TimeZone.new_identifier('Europe/Paris') || GLib.TimeZone.new_local())
+    : GLib.TimeZone.new('Europe/Paris');
+
+// Calendar date in Paris, as a comparable number (20261014)
+function parisKey(date) {
+    let dt = GLib.DateTime.new_from_unix_utc(Math.floor(new Date(date).getTime() / 1000)).to_timezone(TZ);
+    return dt.get_year() * 10000 + dt.get_month() * 100 + dt.get_day_of_month();
+}
+
+// Calendar date in UTC (attendance stores remuneration/absence dates as UTC midnights)
+function utcKey(date) {
+    let d = new Date(date);
+    return d.getUTCFullYear() * 10000 + (d.getUTCMonth() + 1) * 100 + d.getUTCDate();
+}
+
+function parisTime(year, month, day, hour = 0) {
+    return GLib.DateTime.new(TZ, year, month, day, hour, 0, 0).to_unix() * 1000;
+}
+
+function toMs(date) {
+    return date ? new Date(date).getTime() : null;
+}
+
+function clip(start, end, from, to) {
+    let s = Math.max(start, from);
+    let e = Math.min(end, to);
+    return e > s ? { start: s, end: e } : null;
+}
+
+// Parts of `range` not already covered by `taken`
+function subtract(range, taken) {
+    let pieces = [];
+    let cursor = range.start;
+    for (let t of [...taken].sort((a, b) => a.start - b.start)) {
+        let s = Math.max(t.start, range.start);
+        let e = Math.min(t.end, range.end);
+        if (e <= s) continue;
+        if (s > cursor) pieces.push({ start: cursor, end: s });
+        cursor = Math.max(cursor, e);
+        if (cursor >= range.end) break;
+    }
+    if (cursor < range.end) pieces.push({ start: cursor, end: range.end });
+    return pieces;
+}
+
+// Time counted for one day: presences, plus locations on "with locations" days.
+// Closures take priority and are never counted, overlaps are counted once.
+function dayAttendanceMs(dayStart, dayEnd, history, maxPingInterval, withLocations, now) {
+    let groups = [
+        { counted: false, ranges: [] }, // closures
+        { counted: true, ranges: [] },  // presences
+        { counted: withLocations, ranges: [] }, // locations
     ];
 
-    let easter = calculateEaster(year);
-    holidays.push(easter);
-    holidays.push(addDaysToDate(easter, 39)); // Ascension
-    holidays.push(addDaysToDate(easter, 50)); // Lundi de Pentecôte
-
-    return holidays;
-}
-
-function calculateEaster(year) {
-    let a = year % 19;
-    let b = Math.floor(year / 100);
-    let c = year % 100;
-    let d = Math.floor(b / 4);
-    let e = b % 4;
-    let f = Math.floor((b + 8) / 25);
-    let g = Math.floor((b - f + 1) / 3);
-    let h = (19 * a + b - d - g + 15) % 30;
-    let i = Math.floor(c / 4);
-    let k = c % 4;
-    let l = (32 + 2 * e + 2 * i - h - k) % 7;
-    let m = Math.floor((a + 11 * h + 22 * l) / 451);
-    let month = Math.floor((h + l - 7 * m + 114) / 31);
-    let day = ((h + l - 7 * m + 114) % 31) + 1;
-
-    let easterMonday = GLib.DateTime.new_local(year, month, day, 0, 0, 0).add_days(1);
-    return `${year}-${String(easterMonday.get_month()).padStart(2, '0')}-${String(easterMonday.get_day_of_month()).padStart(2, '0')}`;
-}
-
-function addDaysToDate(dateStr, days) {
-    let parts = dateStr.split('-');
-    let newDate = GLib.DateTime.new_local(
-        parseInt(parts[0]), parseInt(parts[1]), parseInt(parts[2]), 0, 0, 0
-    ).add_days(days);
-    return `${newDate.get_year()}-${String(newDate.get_month()).padStart(2, '0')}-${String(newDate.get_day_of_month()).padStart(2, '0')}`;
-}
-
-function calculateWorkingDaysInMonth() {
-    let now = GLib.DateTime.new_now_local();
-
-    if (!now) {
-        Debug.logError('GLib.DateTime.new_now_local() returned null');
-        return 20;
+    for (let c of history.closures || []) {
+        let r = clip(toMs(c.beginAt), toMs(c.endAt), dayStart, dayEnd);
+        if (r) groups[0].ranges.push(r);
     }
 
-    let year = now.get_year();
-    let month = now.get_month();
-    let holidaySet = new Set(getFrenchPublicHolidays(year));
-    let daysInMonth = new Date(year, month, 0).getDate();
-    let workingDays = 0;
-
-    for (let day = 1; day <= daysInMonth; day++) {
-        let date = GLib.DateTime.new_local(year, month, day, 0, 0, 0);
-        if (!date) continue;
-
-        let dayOfWeek = date.get_day_of_week();
-        let dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-
-        if (dayOfWeek >= 1 && dayOfWeek <= 5 && !holidaySet.has(dateStr)) {
-            workingDays++;
+    for (let p of history.presences || []) {
+        let started = toMs(p.startedAt);
+        let saved = toMs(p.savedAt);
+        let ended = toMs(p.endedAt);
+        let end = ended !== null ? ended : saved;
+        let r = clip(started, end, dayStart, dayEnd);
+        if (r) groups[1].ranges.push(r);
+        // An open presence only counts up to its last ping; the next maxPingInterval is "unsaved"
+        if (ended === null) {
+            let unsavedEnd = saved + maxPingInterval;
+            if (end < dayEnd && unsavedEnd > dayStart)
+                groups[1].ranges.push({ start: end, end: unsavedEnd, counted: false });
         }
     }
 
-    return workingDays;
+    for (let l of history.locations || []) {
+        let started = toMs(l.startedAt);
+        let ended = l.endedAt ? toMs(l.endedAt) : now;
+        let r = clip(started, ended, dayStart, dayEnd);
+        if (r) groups[2].ranges.push(r);
+    }
+
+    let taken = [];
+    let total = 0;
+    for (let group of groups) {
+        for (let range of group.ranges) {
+            for (let piece of subtract(range, taken)) {
+                taken.push(piece);
+                if (group.counted && range.counted !== false)
+                    total += piece.end - piece.start;
+            }
+        }
+    }
+    return total;
+}
+
+function buildDays(page, now) {
+    let { calendar, history, user } = page;
+    let year = calendar.year;
+    let month = calendar.monthIndex + 1;
+    let daysInMonth = new Date(year, month, 0).getDate();
+
+    let workdays = new Set((calendar.workdays || []).map(parisKey));
+    let locationDays = new Set((calendar.withLocationsDays || []).map(parisKey));
+    let internships = (page.internships || []).map((i) => ({ from: parisKey(i.start_at), to: parisKey(i.end_at) }));
+    let absences = (history.absences || []).map((a) => ({ from: utcKey(a.beginDate), to: utcKey(a.endDate) }));
+    let inRanges = (key, ranges) => ranges.some((r) => key >= r.from && key <= r.to);
+
+    let days = [];
+    for (let day = 1; day <= daysInMonth; day++) {
+        let key = year * 10000 + month * 100 + day;
+        let dayStart = parisTime(year, month, day);
+        let dayEnd = GLib.DateTime.new(TZ, year, month, day, 0, 0, 0).add_days(1).to_unix() * 1000 - 1;
+        let isWorkday = workdays.has(key);
+
+        let closureMs = 0;
+        let windowStart = parisTime(year, month, day, CLOSURE_WINDOW_START);
+        let windowEnd = parisTime(year, month, day, CLOSURE_WINDOW_END);
+        for (let c of history.closures || []) {
+            let r = clip(toMs(c.beginAt), toMs(c.endAt), windowStart, windowEnd);
+            if (r) closureMs += r.end - r.start;
+        }
+
+        days.push({
+            key,
+            isWorkday,
+            excused: inRanges(key, internships) ? 'INTERNSHIP' : (inRanges(key, absences) ? 'ABSENCE' : null),
+            isClosureDay: isWorkday && closureMs >= WORKDAY_MS,
+            attendanceMs: dayAttendanceMs(dayStart, dayEnd, history, user.maxPingInterval || 0, locationDays.has(key), now),
+        });
+    }
+    return days;
+}
+
+function compileStats(page, days, remunerationUser) {
+    let isRemunerated = (key) => !remunerationUser ||
+        (key >= utcKey(remunerationUser.beginDate) && key <= utcKey(remunerationUser.endDate));
+
+    let baseWorkdays = 0, remuneratedWorkdays = 0, closureWorkdays = 0, userWorkdays = 0, excusedDays = 0, rawDoneMs = 0;
+    for (let d of days) {
+        rawDoneMs += d.attendanceMs;
+        if (!d.isWorkday) continue;
+        let remunerated = isRemunerated(d.key);
+        baseWorkdays++;
+        if (remunerated) remuneratedWorkdays++;
+        if (d.isClosureDay) closureWorkdays++;
+        else if (!d.excused && remunerated) userWorkdays++;
+        if (remunerated && (d.excused || d.isClosureDay)) excusedDays++;
+    }
+
+    let afterExcusedMs = Math.max(0, remuneratedWorkdays * WORKDAY_MS - excusedDays * WORKDAY_MS);
+    let reductionDays = Math.max(0, Math.min(page.calendar.workdayReduction || 0, baseWorkdays));
+    let openWorkdays = baseWorkdays - closureWorkdays;
+    let reductionRaw = reductionDays * WORKDAY_MS * (openWorkdays === 0 ? 0 : userWorkdays / openWorkdays);
+    let reductionMs = reductionRaw - reductionRaw % HOUR_MS;
+    let afterReductionMs = Math.max(0, afterExcusedMs - reductionMs);
+    let capsulesMs = ((page.calendarUser && page.calendarUser.capsules) || [])
+        .reduce((sum, c) => sum + c.batch.valueMs, 0);
+    let todoMs = Math.max(0, afterReductionMs - capsulesMs);
+    let doneMs = Math.max(0, Math.min(rawDoneMs, todoMs));
+
+    return {
+        doneMs,
+        rawDoneMs,
+        todoMs,
+        capsulesMs,
+        percent: todoMs === 0 ? 100 : Math.floor(doneMs / todoMs * 100),
+    };
+}
+
+// Like the site: one result per remuneration active this month, keeping the one with the most to do
+function calculateStats(page, now = Date.now()) {
+    let days = buildDays(page, now);
+    let { year, monthIndex } = page.calendar;
+    let monthStart = parisTime(year, monthIndex + 1, 1);
+    let monthEnd = GLib.DateTime.new(TZ, year, monthIndex + 1, 1, 0, 0, 0).add_months(1).to_unix() * 1000;
+
+    let active = (page.user.remunerationUsers || []).filter((r) =>
+        toMs(r.beginDate) < monthEnd && toMs(r.endDate) >= monthStart);
+
+    let stats = active.length === 0
+        ? compileStats(page, days, null)
+        : active.map((r) => compileStats(page, days, r)).reduce((a, b) => (b.todoMs > a.todoMs ? b : a));
+
+    let todayKey = parisKey(now);
+    let today = days.find((d) => d.key === todayKey);
+    stats.todayMs = today ? today.attendanceMs : 0;
+
+    Debug.logInfo(`Attendance: done=${stats.doneMs}ms todo=${stats.todoMs}ms (${stats.percent}%)`);
+    return stats;
+}
+
+// Time left before the ongoing presence expires: like the site, the last ping's ttl
+// (maxPingInterval) runs from savedAt, and unsaved time is lost if nobody badges before
+function getBadgeStatus(page, now = Date.now()) {
+    let open = (page.history.presences || [])
+        .filter((p) => !p.endedAt && !p.closedAt)
+        .sort((a, b) => toMs(b.startedAt) - toMs(a.startedAt))[0];
+    if (!open) return { active: false, remainingMs: 0, ttlMs: page.user.maxPingInterval || 0 };
+
+    let saved = toMs(open.savedAt);
+    let lastPing = (open.pings || []).find((p) => toMs(p.timestamp) === saved);
+    let ttlMs = (lastPing && lastPing.ttlMs) || page.user.maxPingInterval || 0;
+    let remainingMs = Math.max(0, saved + ttlMs - now);
+    return { active: remainingMs > 0, remainingMs, ttlMs };
 }
 
 // Barème Auvergne-Rhône-Alpes actualisé au 01/04/2025
@@ -104,153 +241,50 @@ function getMonthlyRate(birthDate) {
     return null;
 }
 
-function calculateMoney(birthDate, totalHours, workingHours) {
+function calculateMoney(birthDate, doneMs, todoMs) {
     let rate = getMonthlyRate(birthDate);
     if (rate === null) return null;
-    if (workingHours <= 0) return rate;
-    let ratio = Math.min(totalHours / workingHours, 1.0);
-    return ratio * rate;
+    if (todoMs <= 0) return rate;
+    return Math.min(doneMs / todoMs, 1.0) * rate;
 }
 
-function calculateTodayTotal(data) {
-    let now = new Date();
-    let currentYear = now.getFullYear();
-    let currentMonth = now.getMonth() + 1;
-    let currentDay = now.getDate();
-    let totalSeconds = 0;
-
-    if (Array.isArray(data)) {
-        for (let session of data) {
-            let beginAt = new Date(session.begin_at);
-            if (beginAt.getFullYear() !== currentYear ||
-                (beginAt.getMonth() + 1) !== currentMonth ||
-                beginAt.getDate() !== currentDay) continue;
-            let endAt = session.end_at ? new Date(session.end_at) : now;
-            totalSeconds += (endAt - beginAt) / 1000;
-        }
-    } else {
-        let pad = (n) => String(n).padStart(2, '0');
-        let todayStr = `${currentYear}-${pad(currentMonth)}-${pad(currentDay)}`;
-        if (data[todayStr]) {
-            let timeParts = data[todayStr].split(':');
-            if (timeParts.length >= 3)
-                totalSeconds += parseInt(timeParts[0]) * 3600 + parseInt(timeParts[1]) * 60 + parseFloat(timeParts[2]);
-        }
-    }
-
-    return {
-        hours: Math.floor(totalSeconds / 3600),
-        minutes: Math.floor((totalSeconds % 3600) / 60),
-    };
+function formatDuration(ms, showMinutes) {
+    let totalMinutes = Math.floor(ms / 60000);
+    let hours = Math.floor(totalMinutes / 60);
+    let minutes = totalMinutes % 60;
+    return showMinutes ? `${hours}h${String(minutes).padStart(2, '0')}` : `${hours}h`;
 }
 
-function calculateMonthlyTotal(data, bonusDays = 0, giftDays = 0) {
-    let now = new Date();
-    let currentYear = now.getFullYear();
-    let currentMonth = now.getMonth() + 1;
+function formatTimeDisplay(stats, showMinutes = true, displayFormat = 'ratio', showCurrentDay = false, birthDate = '', showMoney = false) {
+    let todoText = stats.todoMs % HOUR_MS === 0 ? `${stats.todoMs / HOUR_MS}h` : formatDuration(stats.todoMs, true);
+    let ratioText = `${formatDuration(stats.doneMs, showMinutes)}/${todoText}`;
 
-    let totalSeconds = 0;
+    let remainingMs = stats.todoMs - stats.rawDoneMs;
+    let remainingText = remainingMs < 0
+        ? `+${formatDuration(-remainingMs, showMinutes)} above!`
+        : `Remaining: ${formatDuration(remainingMs, showMinutes)}`;
 
-    if (Array.isArray(data)) {
-        for (let session of data) {
-            let beginAt = new Date(session.begin_at);
-            if (beginAt.getFullYear() !== currentYear || (beginAt.getMonth() + 1) !== currentMonth) continue;
-            let endAt = session.end_at ? new Date(session.end_at) : now;
-            totalSeconds += (endAt - beginAt) / 1000;
-        }
-    } else {
-        for (let dateStr in data) {
-            let y = parseInt(dateStr.slice(0, 4));
-            let m = parseInt(dateStr.slice(5, 7));
+    let text;
+    if (displayFormat === 'remaining') text = remainingText;
+    else if (displayFormat === 'all') text = `${ratioText} | ${remainingText}`;
+    else text = ratioText;
 
-            if (y === currentYear && m === currentMonth) {
-                let timeParts = data[dateStr].split(':');
-                if (timeParts.length >= 3) {
-                    totalSeconds += parseInt(timeParts[0]) * 3600 + parseInt(timeParts[1]) * 60 + parseFloat(timeParts[2]);
-                }
-            }
-        }
-    }
+    if (showCurrentDay)
+        text += ` | Today: ${formatDuration(stats.todayMs, showMinutes)}`;
 
-    totalSeconds += bonusDays * 7 * 3600;
-
-    let totalHours = Math.floor(totalSeconds / 3600);
-    let totalMinutes = Math.floor((totalSeconds % 3600) / 60);
-
-    let workingDays = calculateWorkingDaysInMonth();
-    let clampedGiftDays = Math.min(giftDays, workingDays);
-    let effectiveWorkingDays = Math.max(0, workingDays - clampedGiftDays);
-    let workingHours = effectiveWorkingDays * 7;
-
-    Debug.logInfo(`Working days: ${workingDays}, gift: ${giftDays}, required: ${workingHours}h`);
-
-    return {
-        isOnTrack: totalHours >= workingHours,
-        totalHours,
-        totalMinutes,
-        totalSeconds,
-        workingHours,
-        workingDays: effectiveWorkingDays,
-    };
-}
-
-function formatTimeDisplay(data, bonusDays, giftDays, showMinutes = true, displayFormat = 'ratio', showCurrentDay = false, birthDate = '', showMoney = false) {
-    let result = calculateMonthlyTotal(data, bonusDays, giftDays);
-    let pad = (num) => num.toString().padStart(2, '0');
-
-    let todaySuffix = '';
-    if (showCurrentDay) {
-        let today = calculateTodayTotal(data);
-        todaySuffix = showMinutes
-            ? ` | Today: ${today.hours}h${pad(today.minutes)}`
-            : ` | Today: ${today.hours}h`;
-    }
-
-    let moneySuffix = '';
     if (showMoney) {
-        let earned = calculateMoney(birthDate, result.totalHours, result.workingHours);
+        let earned = calculateMoney(birthDate, stats.doneMs, stats.todoMs);
         if (earned !== null)
-            moneySuffix = ` | ${earned.toFixed(2)}€`;
+            text += ` | ${earned.toFixed(2)}€`;
     }
 
-    if (displayFormat === 'remaining') {
-        let remainingSeconds = (result.workingHours * 3600) - result.totalSeconds;
-        let isAhead = remainingSeconds < 0;
-        let absHours = Math.floor(Math.abs(remainingSeconds) / 3600);
-        let absMinutes = Math.floor((Math.abs(remainingSeconds) % 3600) / 60);
-
-        let text = isAhead
-            ? (showMinutes ? `+${absHours}h${pad(absMinutes)} above!` : `+${absHours}h above!`)
-            : (showMinutes ? `Remaining: ${absHours}h${pad(absMinutes)}` : `Remaining: ${absHours}h`);
-
-        return { text: text + todaySuffix + moneySuffix, isOnTrack: isAhead, totalHours: result.totalHours, totalMinutes: result.totalMinutes, workingHours: result.workingHours };
-    }
-
-    let ratioText = showMinutes
-        ? `${result.totalHours}h${pad(result.totalMinutes)}/${result.workingHours}h`
-        : `${result.totalHours}h/${result.workingHours}h`;
-
-    if (displayFormat === 'all') {
-        let remainingSeconds = (result.workingHours * 3600) - result.totalSeconds;
-        let isAhead = remainingSeconds < 0;
-        let absHours = Math.floor(Math.abs(remainingSeconds) / 3600);
-        let absMinutes = Math.floor((Math.abs(remainingSeconds) % 3600) / 60);
-        let remainingText = isAhead
-            ? (showMinutes ? `+${absHours}h${pad(absMinutes)} above!` : `+${absHours}h above!`)
-            : (showMinutes ? `Remaining: ${absHours}h${pad(absMinutes)}` : `Remaining: ${absHours}h`);
-
-        return { text: `${ratioText} | ${remainingText}` + todaySuffix + moneySuffix, isOnTrack: result.isOnTrack, totalHours: result.totalHours, totalMinutes: result.totalMinutes, workingHours: result.workingHours };
-    }
-
-    // ratio (default)
-    return { text: ratioText + todaySuffix + moneySuffix, isOnTrack: result.isOnTrack, totalHours: result.totalHours, totalMinutes: result.totalMinutes, workingHours: result.workingHours };
+    return { text, percent: stats.percent };
 }
 
 var Calculation = {
-    calculateMonthlyTotal,
-    calculateTodayTotal,
-    calculateWorkingDaysInMonth,
-    getFrenchPublicHolidays,
+    calculateStats,
+    getBadgeStatus,
+    formatDuration,
     calculateMoney,
     getMonthlyRate,
     formatTimeDisplay,
