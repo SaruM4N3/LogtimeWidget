@@ -53,8 +53,8 @@ var UpdateManager = class UpdateManager {
     }
 
     // Moves the installed copy to the upstream commit. reset --hard @{u} also replaces
-    // untracked files that the update adds (a pull refuses to), while ignored files
-    // (utils/*.json: settings and session) are kept.
+    // untracked files that the update adds (a pull refuses to). Settings and session
+    // live in ~/.local/share/LogtimeWidget, outside this checkout, so the reset can't touch them.
     _performUpdate() {
         this._runGitCommand(['fetch'], (success) => {
             if (!success) {

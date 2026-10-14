@@ -491,6 +491,19 @@ function fillPreferencesWindow(window) {
     badgeWarningRow.activatable_widget = badgeWarningSpin;
     barColorGroup.add(badgeWarningRow);
 
+    const blinkTestRow = new Adw.ActionRow({
+        title: 'Test Blink',
+        subtitle: 'Blink the badge bar in the panel for 5 seconds',
+    });
+    const blinkTestButton = new Gtk.Button({
+        label: 'Test',
+        valign: Gtk.Align.CENTER,
+    });
+    blinkTestButton.connect('clicked', () => MyStorage.requestBlinkTest());
+    blinkTestRow.add_suffix(blinkTestButton);
+    blinkTestRow.activatable_widget = blinkTestButton;
+    barColorGroup.add(blinkTestRow);
+
     const resetBarColorsRow = new Adw.ActionRow({
         title: 'Reset Colors',
         subtitle: 'Restore default bar colors',

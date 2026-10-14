@@ -19,24 +19,18 @@ EXTENSION_UUID="soft-brightness@fifi.org"
 SOURCE_DIR="$(pwd)"  # this repo
 INSTALL_DIR="$HOME/.local/share/gnome-shell/extensions/$EXTENSION_UUID"
 
-SESSION_FILE="$INSTALL_DIR/utils/session.json"
-SETTINGS_FILE="$INSTALL_DIR/utils/saved_days.json"
-SAVED_SESSION=""
-SAVED_SETTINGS=""
-
-if [ -f "$SESSION_FILE" ]; then
-    SAVED_SESSION=$(cat "$SESSION_FILE")
-    echo -e "${GREEN}Existing login session found — will be preserved.${NC}"
-else
-    echo -e "${YELLOW}No login session found — a login window will open when the widget starts.${NC}"
-fi
-
-if [ -f "$SETTINGS_FILE" ]; then
-    SAVED_SETTINGS=$(cat "$SETTINGS_FILE")
-    echo -e "${GREEN}Existing settings found — will be preserved.${NC}"
-else
-    echo -e "${YELLOW}No existing settings found.${NC}"
-fi
+# Settings and session live outside the extension dir, so wiping it below keeps them.
+# Older versions kept them in utils/: move them out first.
+DATA_DIR="$HOME/.local/share/LogtimeWidget"
+mkdir -p "$DATA_DIR"
+for pair in "saved_days.json:settings.json" "session.json:session.json"; do
+    OLD="$INSTALL_DIR/utils/${pair%%:*}"
+    NEW="$DATA_DIR/${pair##*:}"
+    if [ -f "$OLD" ] && [ ! -f "$NEW" ]; then
+        cp "$OLD" "$NEW"
+        echo -e "${GREEN}Moved $OLD to $NEW${NC}"
+    fi
+done
 
 echo -e "${YELLOW}Cleaning old $INSTALL_DIR...${NC}"
 rm -rf "$INSTALL_DIR"
@@ -49,18 +43,6 @@ if [ -d "$SOURCE_DIR/.git" ]; then
     cp -r "$SOURCE_DIR/.git" "$INSTALL_DIR/"
 fi
 # ---------------------------------------------------------
-
-mkdir -p "$INSTALL_DIR/utils"
-
-if [ -n "$SAVED_SESSION" ]; then
-    echo "$SAVED_SESSION" > "$SESSION_FILE"
-    echo -e "${GREEN}Login session restored.${NC}"
-fi
-
-if [ -n "$SAVED_SETTINGS" ]; then
-    echo "$SAVED_SETTINGS" > "$SETTINGS_FILE"
-    echo -e "${GREEN}Settings restored.${NC}"
-fi
 
 echo -e "${YELLOW}Enabling extension...${NC}"
 gnome-extensions enable "$EXTENSION_UUID" 2>/dev/null || true
