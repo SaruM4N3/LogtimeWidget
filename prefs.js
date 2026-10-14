@@ -480,6 +480,17 @@ function fillPreferencesWindow(window) {
     const badgeAlertColorButton = addColorRow('Badge Alert', 'Blinking color when the session is about to expire',
         saved.badgeAlertColor || DEFAULT_BADGE_ALERT_COLOR);
 
+    const badgeWarningRow = new Adw.ActionRow({
+        title: 'Blink Before Expiry',
+        subtitle: 'Minutes before the session expires when the badge bar starts blinking',
+    });
+    const badgeWarningSpin = Gtk.SpinButton.new_with_range(1, 120, 1);
+    badgeWarningSpin.set_value(saved.badgeWarningMinutes);
+    badgeWarningSpin.valign = Gtk.Align.CENTER;
+    badgeWarningRow.add_suffix(badgeWarningSpin);
+    badgeWarningRow.activatable_widget = badgeWarningSpin;
+    barColorGroup.add(badgeWarningRow);
+
     const resetBarColorsRow = new Adw.ActionRow({
         title: 'Reset Colors',
         subtitle: 'Restore default bar colors',
@@ -519,6 +530,7 @@ function fillPreferencesWindow(window) {
             barColor: rgbaToHex(barColorButton.get_rgba()),
             badgeColor: rgbaToHex(badgeColorButton.get_rgba()),
             badgeAlertColor: rgbaToHex(badgeAlertColorButton.get_rgba()),
+            badgeWarningMinutes: badgeWarningSpin.get_value_as_int(),
         });
     }
 
@@ -545,6 +557,7 @@ function fillPreferencesWindow(window) {
     endColorButton.connect('color-set', () => { saveAllSettings(); previewArea.queue_draw(); });
     aheadColorButton.connect('color-set', saveAllSettings);
     [barColorButton, badgeColorButton, badgeAlertColorButton].forEach((b) => b.connect('color-set', saveAllSettings));
+    badgeWarningSpin.connect('value-changed', saveAllSettings);
 
     // ===== Account Group =====
     const accountGroup = new Adw.PreferencesGroup({

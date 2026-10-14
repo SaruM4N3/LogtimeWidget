@@ -15,7 +15,6 @@ A GNOME Shell extension that shows your monthly logtime from [attendance.42lyon.
 ```
 git clone https://github.com/SaruM4N3/LogtimeWidget.git
 cd LogtimeWidget
-git switch 42LyonFix
 ./install.sh
 ```
 
@@ -84,7 +83,7 @@ The bars are picked by the display format:
 | **Remaining Hours** | Time before your next badge: the session expires 4h after the last clock-in and unsaved time is lost |
 | **Combined** | Both |
 
-During the last 15 minutes before the session expires, the badge bar blinks in the alert color (red by default) with a `Badge! m:ss` countdown.
+During the last 15 minutes (configurable in Settings) before the session expires, the badge bar blinks in the alert color (red by default) with a `Badge! m:ss` countdown.
 
 **Panel Position** puts the widget on the left, center or right of the top bar (applied immediately).
 
