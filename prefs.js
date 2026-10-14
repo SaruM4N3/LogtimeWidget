@@ -2,6 +2,7 @@ const { Adw, Gio, Gtk, Gdk, GLib } = imports.gi;
 const ExtensionUtils = imports.misc.extensionUtils;
 const Me = ExtensionUtils.getCurrentExtension();
 const { MyStorage } = Me.imports.data.storage;
+const { Debug } = Me.imports.utils.debug;
 
 const DEFAULT_START_COLOR = '#fff000';
 const DEFAULT_END_COLOR = '#47ff00';
@@ -587,6 +588,29 @@ function fillPreferencesWindow(window) {
         subtitle: MyStorage.STORAGE_FILE || 'Unknown path',
     });
     infoGroup.add(storageRow);
+
+    const logsRow = new Adw.ActionRow({
+        title: 'Logs',
+        subtitle: Debug.LOG_FILE,
+    });
+
+    const openLogsButton = new Gtk.Button({
+        label: 'Open Logs',
+        valign: Gtk.Align.CENTER,
+    });
+    openLogsButton.connect('clicked', () => {
+        // Also creates the file if nothing was logged yet
+        Debug.logInfo('Opening logs from Settings');
+        try {
+            Gio.AppInfo.launch_default_for_uri(Gio.File.new_for_path(Debug.LOG_FILE).get_uri(), null);
+        } catch (e) {
+            Debug.logError(`Failed to open logs: ${e.message}`);
+        }
+    });
+
+    logsRow.add_suffix(openLogsButton);
+    logsRow.activatable_widget = openLogsButton;
+    infoGroup.add(logsRow);
 
     // ===== Credits Group =====
     const creditsGroup = new Adw.PreferencesGroup({

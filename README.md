@@ -97,6 +97,8 @@ Preferences and the attendance session are stored locally in:
 ```
 The login window's browser data (Intra login) is kept in `~/.local/share/LogtimeWidget/webkit/`.
 
+Logs are written to `~/.local/share/LogtimeWidget/logtime.log` (also in the GNOME Shell journal). Open them from **Settings → Storage Information → Open Logs**.
+
 ## Features
 
 - **Same Logtime as Attendance** — Done/required hours are computed exactly like attendance.42lyon.fr: calendar workdays, absences, internships, closures, workday reduction and activated capsules. Refreshed every 60 seconds

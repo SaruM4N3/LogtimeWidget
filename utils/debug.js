@@ -2,7 +2,35 @@
  * Logging utility for your GNOME extension
  */
 
+const GLib = imports.gi.GLib;
+const Gio = imports.gi.Gio;
 const Me = imports.misc.extensionUtils.getCurrentExtension();
+
+// Log file opened from Settings; outside the extension dir so updates keep it
+const LOG_DIR = GLib.build_filenamev([GLib.get_user_data_dir(), 'LogtimeWidget']);
+const LOG_FILE = GLib.build_filenamev([LOG_DIR, 'logtime.log']);
+const LOG_MAX_BYTES = 512 * 1024;
+
+// Appends a line to LOG_FILE, moving it to logtime.log.old once it gets too big
+function writeToFile(line) {
+    try {
+        GLib.mkdir_with_parents(LOG_DIR, 0o755);
+        let file = Gio.File.new_for_path(LOG_FILE);
+        try {
+            let size = file.query_info('standard::size', Gio.FileQueryInfoFlags.NONE, null).get_size();
+            if (size > LOG_MAX_BYTES)
+                file.move(Gio.File.new_for_path(`${LOG_FILE}.old`), Gio.FileCopyFlags.OVERWRITE, null, null);
+        } catch (e) {
+            // No log file yet
+        }
+        let stream = file.append_to(Gio.FileCreateFlags.NONE, null);
+        let time = GLib.DateTime.new_now_local().format('%F %T');
+        stream.write_all(new TextEncoder().encode(`${time} ${line}\n`), null);
+        stream.close(null);
+    } catch (e) {
+        log(`[${Me.metadata.name}] Failed to write log file: ${e.message}`);
+    }
+}
 
 function cLog(type, message) {
     const RESET = '\x1b[0m';
@@ -44,6 +72,7 @@ function cLog(type, message) {
     let color = COLORS[type] || RESET;
     let label = LABEL[type] || '[LOG]';
     log(`${color}[${Me.metadata.name}] ${label} [${caller}] ${message}${RESET}`);
+    writeToFile(`${label} [${caller}] ${message}`);
 }
 
 
@@ -58,5 +87,6 @@ var Debug = {
     logWarn,
     logError,
     logSuccess,
-    logDebug
+    logDebug,
+    LOG_FILE,
 };
