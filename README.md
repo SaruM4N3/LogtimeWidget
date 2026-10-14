@@ -83,7 +83,7 @@ The bars are picked by the display format:
 | **Remaining Hours** | Time before your next badge: the session expires 4h after the last clock-in and unsaved time is lost |
 | **Combined** | Both |
 
-During the last 15 minutes (configurable in Settings) before the session expires, the badge bar blinks in the alert color (red by default) with a `Badge! m:ss` countdown.
+During the last 15 minutes (configurable in Settings) before the session expires, the badge bar blinks in the alert color (red by default) with a `Badge! m:ss` countdown. The **Test** button next to it blinks the bar for 5 seconds to preview it.
 
 **Panel Position** puts the widget on the left, center or right of the top bar (applied immediately).
 
@@ -93,10 +93,10 @@ During the last 15 minutes (configurable in Settings) before the session expires
 
 Preferences and the attendance session are stored locally in:
 ```
-~/.local/share/gnome-shell/extensions/soft-brightness@fifi.org/utils/saved_days.json
-~/.local/share/gnome-shell/extensions/soft-brightness@fifi.org/utils/session.json
+~/.local/share/LogtimeWidget/settings.json
+~/.local/share/LogtimeWidget/session.json
 ```
-The login window's browser data (Intra login) is kept in `~/.local/share/LogtimeWidget/webkit/`.
+They are outside the extension folder, so updates and reinstalls never touch them (older versions kept them in the extension's `utils/` folder; they are copied over automatically). The login window's browser data (Intra login) is kept in `~/.local/share/LogtimeWidget/webkit/`.
 
 Logs are written to `~/.local/share/LogtimeWidget/logtime.log` (also in the GNOME Shell journal). Open them from **Settings → Storage Information → Open Logs**.
 

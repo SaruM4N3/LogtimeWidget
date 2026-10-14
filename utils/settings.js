@@ -8,10 +8,12 @@ const Me = ExtensionUtils.getCurrentExtension();
 const { MyStorage } = Me.imports.data.storage;
 const { Debug } = Me.imports.utils.debug;
 
-function setupStorageMonitoring(onChangeCallback) {
+// onChangeCallback runs when the settings file changes, onBlinkTest when Settings asks for a blink test
+function setupStorageMonitoring(onChangeCallback, onBlinkTest) {
     let dirPath = GLib.path_get_dirname(MyStorage.STORAGE_FILE);
     let dir = Gio.File.new_for_path(dirPath);
     let storageFileObj = Gio.File.new_for_path(MyStorage.STORAGE_FILE);
+    let blinkTestFileObj = Gio.File.new_for_path(MyStorage.BLINK_TEST_FILE);
 
     let monitor = dir.monitor_directory(Gio.FileMonitorFlags.NONE, null);
 
@@ -22,6 +24,9 @@ function setupStorageMonitoring(onChangeCallback) {
                 if (onChangeCallback) onChangeCallback();
                 return GLib.SOURCE_REMOVE;
             });
+        } else if (file && file.equal(blinkTestFileObj) &&
+            eventType === Gio.FileMonitorEvent.CHANGES_DONE_HINT) {
+            if (onBlinkTest) onBlinkTest();
         }
     });
 

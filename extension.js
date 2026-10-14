@@ -16,6 +16,8 @@ const ATTENDANCE_DATA_URL = 'https://attendance.42lyon.fr/me/__data.json';
 // Must match .logtime-bar width in stylesheet.css
 const BAR_WIDTH = 100;
 const BLINK_INTERVAL_MS = 500;
+// Length of the blink test started from Settings
+const BLINK_TEST_MS = 5000;
 
 class LogWidget {
 	constructor() {
@@ -24,6 +26,8 @@ class LogWidget {
 		this._checkTimeout = null;
 		this._blinkTimeoutId = null;
 		this._blinkOn = false;
+		this._blinkTestTimeoutId = null;
+		this._blinkTestUntil = 0;
 		this._cachedData = null;
 		this._fileMonitor = null;
 		this._sessionMonitor = null;
@@ -54,6 +58,7 @@ class LogWidget {
 	disable() {
 		Connect.cancelLogin();
 		this._stopBlink();
+		this._stopBlinkTest();
 
 		[this._fileMonitor, this._sessionMonitor].forEach((m) => {
 			if (m) m.cancel();
@@ -100,7 +105,7 @@ class LogWidget {
 				Menu.moveToPanel(this, this.panelPosition);
 			Debug.logInfo(`Settings reloaded: format=${this.displayFormat}`);
 			this._updateLogtime();
-		});
+		}, () => this._startBlinkTest());
 
 		// Reconnect when the login window saves a new session, or when it's cleared from Settings
 		let sessionFile = Gio.File.new_for_path(MyStorage.SESSION_FILE);
@@ -198,7 +203,8 @@ class LogWidget {
 	_updateBars(percentage) {
 		let showBars = this.displayMode !== 'text';
 		let showMonth = showBars && this.displayFormat !== 'remaining';
-		let showBadge = showBars && this.displayFormat !== 'ratio';
+		// The blink test shows the badge bar even when the display format hides it
+		let showBadge = this._blinkTestUntil > 0 || (showBars && this.displayFormat !== 'ratio');
 
 		if (showMonth) {
 			this._fillBar(this._monthBar, percentage, this.barColor);
@@ -222,9 +228,13 @@ class LogWidget {
 		let badge = Calculation.getBadgeStatus(this._cachedData);
 		let ratio = badge.ttlMs > 0 ? badge.remainingMs / badge.ttlMs : 0;
 		let warning = badge.active && badge.remainingMs <= this.badgeWarningMinutes * 60 * 1000;
+		let testMs = this._blinkTestUntil - Date.now();
 
-		if (warning) {
-			let seconds = Math.ceil(badge.remainingMs / 1000);
+		if (warning || testMs > 0) {
+			// The test counts down its own duration, on a full bar when no session is open
+			let remainingMs = warning ? badge.remainingMs : testMs;
+			if (!warning && !badge.active) ratio = 1;
+			let seconds = Math.ceil(remainingMs / 1000);
 			let countdown = `${Math.floor(seconds / 60)}:${String(seconds % 60).padStart(2, '0')}`;
 			this._fillBar(this._badgeBar, ratio, this.badgeAlertColor);
 			this._badgeLabel.set_text(`Badge! ${countdown}`);
@@ -263,6 +273,32 @@ class LogWidget {
 		this._blinkOn = false;
 		if (this._badgeBar) this._badgeBar.opacity = 255;
 		if (this._badgeLabel) this._badgeLabel.opacity = 255;
+	}
+
+	// Blinks the badge bar for BLINK_TEST_MS, then restores the normal display
+	_startBlinkTest() {
+		if (!this._cachedData) {
+			Debug.logWarn('Blink test: no data yet');
+			return;
+		}
+		Debug.logInfo('Blink test started from Settings');
+		this._stopBlinkTest();
+		this._blinkTestUntil = Date.now() + BLINK_TEST_MS;
+		this._blinkTestTimeoutId = GLib.timeout_add(GLib.PRIORITY_DEFAULT, BLINK_TEST_MS, () => {
+			this._blinkTestTimeoutId = null;
+			this._blinkTestUntil = 0;
+			this._updateLogtime();
+			return GLib.SOURCE_REMOVE;
+		});
+		this._updateLogtime();
+	}
+
+	_stopBlinkTest() {
+		if (this._blinkTestTimeoutId) {
+			GLib.source_remove(this._blinkTestTimeoutId);
+			this._blinkTestTimeoutId = null;
+		}
+		this._blinkTestUntil = 0;
 	}
 
 	_fillBar(bar, ratio, color) {

@@ -5,35 +5,24 @@ const GLib = imports.gi.GLib;
 const Gio = imports.gi.Gio;
 const ByteArray = imports.byteArray;
 const ExtensionUtils = imports.misc.extensionUtils;
-let Me;
-try {
-    Me = ExtensionUtils.getCurrentExtension();
-} catch (e) {
-    Me = null;
-}
+const Me = ExtensionUtils.getCurrentExtension();
 const { Debug } = Me.imports.utils.debug;
 
+// Settings and session live outside the extension dir: it is a git checkout that
+// updates reset and install.sh wipes, so nothing user-made should be kept in it
+const DATA_DIR = GLib.build_filenamev([GLib.get_user_data_dir(), 'LogtimeWidget']);
+const STORAGE_FILE = GLib.build_filenamev([DATA_DIR, 'settings.json']);
+const SESSION_FILE = GLib.build_filenamev([DATA_DIR, 'session.json']);
+// Browser data of the login window (keeps the intra login)
+const WEBKIT_DIR = GLib.build_filenamev([DATA_DIR, 'webkit']);
+// Written by the Settings "Test" button, watched by the extension to blink the badge bar
+const BLINK_TEST_FILE = GLib.build_filenamev([DATA_DIR, 'blink_test']);
 
-
-function getExtensionDir() {
-    let path;
-    if (Me) {
-        path = Me.path;
-    } else {
-        path = GLib.build_filenamev([
-            GLib.get_home_dir(),
-            '.local/share/gnome-shell/extensions/soft-brightness@fifi.org'
-        ]);
-    }
-    return path;
-}
-
-// Storage file path
-const STORAGE_DIR = getExtensionDir() + '/utils';
-const STORAGE_FILE = GLib.build_filenamev([STORAGE_DIR, 'saved_days.json']);
-const SESSION_FILE = GLib.build_filenamev([STORAGE_DIR, 'session.json']);
-// Browser data of the login window (keeps the intra login), outside the extension dir so reinstalls keep it
-const WEBKIT_DIR = GLib.build_filenamev([GLib.get_user_data_dir(), 'LogtimeWidget', 'webkit']);
+// Older versions kept their files in <extension>/utils/
+const LEGACY_FILES = [
+    [GLib.build_filenamev([Me.path, 'utils', 'saved_days.json']), STORAGE_FILE],
+    [GLib.build_filenamev([Me.path, 'utils', 'session.json']), SESSION_FILE],
+];
 
 // Default colors
 const DEFAULT_START_COLOR = '#fff000';
@@ -46,16 +35,26 @@ const DEFAULT_BADGE_ALERT_COLOR = '#ef4444';
 const DEFAULT_BADGE_WARNING_MINUTES = 15;
 
 function ensureStorageDir() {
-    let dir = Gio.File.new_for_path(STORAGE_DIR);
-    if (!dir.query_exists(null)) {
+    GLib.mkdir_with_parents(DATA_DIR, 0o700);
+}
+
+// Copies files of older versions to DATA_DIR once (copy, not move: a shell that
+// still runs the old code until its restart keeps reading them)
+function migrateLegacyFiles() {
+    ensureStorageDir();
+    for (let [from, to] of LEGACY_FILES) {
+        let source = Gio.File.new_for_path(from);
+        let dest = Gio.File.new_for_path(to);
+        if (dest.query_exists(null) || !source.query_exists(null)) continue;
         try {
-            dir.make_directory_with_parents(null);
-            Debug.logInfo(`Created storage directory: ${STORAGE_DIR}`);
+            source.copy(dest, Gio.FileCopyFlags.NONE, null, null);
+            Debug.logSuccess(`Migrated ${from} to ${to}`);
         } catch (e) {
-            Debug.logError(`Failed to create dir: ${e.message}`);
+            Debug.logError(`Failed to migrate ${from}: ${e.message}`);
         }
     }
 }
+migrateLegacyFiles();
 
 // Keeps only known settings, falling back to defaults for missing ones
 function withDefaults(settings) {
@@ -147,12 +146,25 @@ function clearSession() {
     }
 }
 
+// Asks the running extension to blink the badge bar for a few seconds
+function requestBlinkTest() {
+    try {
+        ensureStorageDir();
+        Gio.File.new_for_path(BLINK_TEST_FILE).replace_contents(
+            `${Date.now()}`, null, false, Gio.FileCreateFlags.REPLACE_DESTINATION, null);
+    } catch (e) {
+        Debug.logError(`Failed to request blink test: ${e}`);
+    }
+}
+
 var MyStorage = {
     saveSettings: saveSettings,
     loadSettings: loadSettings,
     loadSession: loadSession,
     clearSession: clearSession,
+    requestBlinkTest: requestBlinkTest,
     STORAGE_FILE: STORAGE_FILE,
     SESSION_FILE: SESSION_FILE,
-    WEBKIT_DIR: WEBKIT_DIR
+    WEBKIT_DIR: WEBKIT_DIR,
+    BLINK_TEST_FILE: BLINK_TEST_FILE
 };
