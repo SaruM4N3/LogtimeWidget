@@ -1,10 +1,12 @@
 # Logtime Widget - GNOME Shell Extension
 
-A GNOME Shell extension that tracks and displays your monthly logtime for 42 School. Shows real-time progress towards your monthly hour requirements with visual status indicators.
+A GNOME Shell extension that shows your monthly logtime from [attendance.42lyon.fr](https://attendance.42lyon.fr) (42 Lyon) right in the top bar: the same done/required hours as the site, a month progress bar, and a countdown before your next badge.
 
 ## Screenshots
 
 ![Preview](screenshots/preview.gif)
+
+*Month progress (62%) and time left before the next badge (3h10).*
 
 ## Installation
 
