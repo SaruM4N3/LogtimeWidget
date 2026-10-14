@@ -7,10 +7,10 @@ const { Debug } = Me.imports.utils.debug;
 
 var UpdateManager = class UpdateManager {
     constructor() {
-        // Repo root = installed extension dir
+        // Repo root = installed extension dir (install.sh copies .git there)
         this._repoPath = Me.path;
         this._source = null;
-        this._updateAvailable = false;
+        this._notifiedHead = null;
     }
 
     checkForUpdates(onUpdateAvailable) {
@@ -22,14 +22,17 @@ var UpdateManager = class UpdateManager {
 
                 let count = parseInt(output.trim());
                 Debug.logInfo(`Git Check: ${count} commits behind`);
-                if (!isNaN(count) && count > 0) {
-                    // 1. Run the callback to update the Menu UI
-                    if (onUpdateAvailable) {
-                        onUpdateAvailable(count);
-                    }
-                    // 2. Show the system notification (existing logic)
+                if (isNaN(count) || count <= 0) return;
+
+                if (onUpdateAvailable)
+                    onUpdateAvailable(count);
+
+                // Notify once per new upstream commit, not on every check
+                this._runGitCommand(['rev-parse', '@{u}'], (success, head) => {
+                    if (!success || head.trim() === this._notifiedHead) return;
+                    this._notifiedHead = head.trim();
                     this._notifyUser(count);
-                }
+                });
             });
         });
     }
@@ -37,6 +40,7 @@ var UpdateManager = class UpdateManager {
     _notifyUser(count) {
         if (!this._source) {
             this._source = new MessageTray.Source(Me.metadata.name, 'system-software-update-symbolic');
+            this._source.connect('destroy', () => { this._source = null; });
             Main.messageTray.add(this._source);
         }
 
@@ -45,22 +49,24 @@ var UpdateManager = class UpdateManager {
         let notification = new MessageTray.Notification(this._source, title, body);
 
         notification.addAction('Update', () => this._performUpdate());
-        this._source.notify(notification);
+        this._source.showNotification(notification);
     }
 
+    // Moves the installed copy to the upstream commit. reset --hard @{u} also replaces
+    // untracked files that the update adds (a pull refuses to), while ignored files
+    // (utils/*.json: settings and session) are kept.
     _performUpdate() {
-        // 1. Reset EVERYTHING to match the current commit (wipes local changes)
-        this._runGitCommand(['reset', '--hard', 'HEAD'], (success) => {
+        this._runGitCommand(['fetch'], (success) => {
             if (!success) {
-                global.log("[LogtimeWidget] Reset failed, trying pull anyway...");
+                Main.notify(Me.metadata.name, 'Update failed: could not reach GitHub. Check the logs.');
+                return;
             }
-
-            // 2. Now Pull (should succeed because repo is clean)
-            this._runGitCommand(['pull'], (success, output) => {
+            this._runGitCommand(['reset', '--hard', '@{u}'], (success) => {
                 if (success) {
-                    Main.notify(Me.metadata.name, "Update successful! Please restart GNOME Shell.\nAlt+f2 then type r and enter.");
+                    Debug.logSuccess('Update installed');
+                    Main.notify(Me.metadata.name, 'Update successful! Please restart GNOME Shell.\nAlt+F2 then type r and Enter (or log out on Wayland).');
                 } else {
-                    Main.notify(Me.metadata.name, "Update failed. Check logs.");
+                    Main.notify(Me.metadata.name, 'Update failed. Check the logs.');
                 }
             });
         });
@@ -78,29 +84,29 @@ var UpdateManager = class UpdateManager {
             // Avoid leaking git env from shell
             launcher.unsetenv('GIT_DIR');
             launcher.unsetenv('GIT_WORK_TREE');
+            // Never wait for credentials: there is no terminal to type them in
+            launcher.setenv('GIT_TERMINAL_PROMPT', '0', true);
+            launcher.setenv('GIT_SSH_COMMAND', 'ssh -o BatchMode=yes', true);
 
-            let cmd = ['git', ...args];
-
-            let proc = launcher.spawnv(cmd);
+            let proc = launcher.spawnv(['git', ...args]);
 
             proc.communicate_utf8_async(null, null, (proc, res) => {
                 try {
-                    let [ok, stdout, stderr] = proc.communicate_utf8_finish(res);
+                    let [, stdout, stderr] = proc.communicate_utf8_finish(res);
 
                     if (proc.get_successful()) {
                         callback(true, stdout);
                     } else {
-                        // Log stderr for debugging
-                        global.log(`[LogtimeWidget] Git Error: ${stderr}`);
+                        Debug.logError(`git ${args.join(' ')} failed: ${stderr.trim()}`);
                         callback(false, stderr);
                     }
                 } catch (e) {
-                    global.logError(e);
+                    Debug.logError(`git ${args.join(' ')} failed: ${e.message}`);
                     callback(false, e.message);
                 }
             });
         } catch (e) {
-            global.logError(e);
+            Debug.logError(`git ${args.join(' ')} failed: ${e.message}`);
             callback(false, e.message);
         }
     }
