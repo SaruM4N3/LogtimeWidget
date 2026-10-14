@@ -15,8 +15,6 @@ const { Menu } = Me.imports.utils.menu;
 const ATTENDANCE_DATA_URL = 'https://attendance.42lyon.fr/me/__data.json';
 // Must match .logtime-bar width in stylesheet.css
 const BAR_WIDTH = 100;
-// The badge bar blinks red when the session expires in less than this
-const BADGE_WARNING_MS = 15 * 60 * 1000;
 const BLINK_INTERVAL_MS = 500;
 
 class LogWidget {
@@ -91,6 +89,7 @@ class LogWidget {
 		this.barColor = saved.barColor;
 		this.badgeColor = saved.badgeColor;
 		this.badgeAlertColor = saved.badgeAlertColor;
+		this.badgeWarningMinutes = saved.badgeWarningMinutes;
 	}
 
 	_setupStorageMonitoring() {
@@ -222,7 +221,7 @@ class LogWidget {
 	_renderBadge() {
 		let badge = Calculation.getBadgeStatus(this._cachedData);
 		let ratio = badge.ttlMs > 0 ? badge.remainingMs / badge.ttlMs : 0;
-		let warning = badge.active && badge.remainingMs <= BADGE_WARNING_MS;
+		let warning = badge.active && badge.remainingMs <= this.badgeWarningMinutes * 60 * 1000;
 
 		if (warning) {
 			let seconds = Math.ceil(badge.remainingMs / 1000);

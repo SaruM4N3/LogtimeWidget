@@ -42,6 +42,8 @@ const DEFAULT_AHEAD_COLOR = '#00c8ff';
 const DEFAULT_BAR_COLOR = '#47ff00';
 const DEFAULT_BADGE_COLOR = '#facc15';
 const DEFAULT_BADGE_ALERT_COLOR = '#ef4444';
+// Minutes before the session expires when the badge bar starts blinking
+const DEFAULT_BADGE_WARNING_MINUTES = 15;
 
 function ensureStorageDir() {
     let dir = Gio.File.new_for_path(STORAGE_DIR);
@@ -117,6 +119,7 @@ function getDefaults() {
         barColor: DEFAULT_BAR_COLOR,
         badgeColor: DEFAULT_BADGE_COLOR,
         badgeAlertColor: DEFAULT_BADGE_ALERT_COLOR,
+        badgeWarningMinutes: DEFAULT_BADGE_WARNING_MINUTES,
     };
 }
 
