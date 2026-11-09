@@ -6,7 +6,7 @@ A GNOME Shell extension that shows your monthly logtime from [attendance.42lyon.
 
 ![Preview](screenshots/preview.gif)
 
-*Month progress (62%) and time left before the next badge (3h10).*
+*Month progress and time left before the next badge (3h10).*
 
 ## Installation
 
@@ -79,7 +79,7 @@ The bars are picked by the display format:
 
 | Format | Bar |
 |--------|-----|
-| **Current / Needed** | Month progress, with the attendance percentage next to it |
+| **Current / Needed** | Month progress, with the done/needed hours next to it (e.g. `50h47/84h`) |
 | **Remaining Hours** | Time before your next badge: the session expires 4h after the last clock-in and unsaved time is lost |
 | **Combined** | Both |
 
@@ -178,10 +178,15 @@ chmod +x uninstall.sh
 ./uninstall.sh
 ```
 
+It asks whether to also delete your settings and attendance session (`~/.local/share/LogtimeWidget`). Use `./uninstall.sh --purge` to delete them, or `--keep` to keep them, without asking.
+
+You can also uninstall from Settings: **Uninstall** at the bottom of the page.
+
 Or manually:
 ```
 gnome-extensions disable soft-brightness@fifi.org
 rm -rf ~/.local/share/gnome-shell/extensions/soft-brightness@fifi.org
+rm -rf ~/.local/share/LogtimeWidget   # settings & session
 ```
 
 ## Privacy & Security

@@ -193,14 +193,14 @@ class LogWidget {
 		let percentage = Math.min(1.0, Math.max(0.0, result.percent / 100));
 		let color = this._interpolateColor(percentage);
 		this._label.set_style(`color: ${color}; font-weight: 600;`);
-		this._updateBars(percentage);
+		this._updateBars(percentage, Calculation.formatRatio(stats, this.showMinutes));
 
 		Debug.logSuccess(`Updated: ${result.text} [minutes:${this.showMinutes}, format:${this.displayFormat}]`);
 	}
 
 	// Display mode 'bar' or 'combined': the display format picks the bars,
 	// ratio -> month progress, remaining -> time before next badge, all -> both
-	_updateBars(percentage) {
+	_updateBars(percentage, ratioText) {
 		let showBars = this.displayMode !== 'text';
 		let showMonth = showBars && this.displayFormat !== 'remaining';
 		// The blink test shows the badge bar even when the display format hides it
@@ -208,7 +208,7 @@ class LogWidget {
 
 		if (showMonth) {
 			this._fillBar(this._monthBar, percentage, this.barColor);
-			this._monthLabel.set_text(`${Math.round(percentage * 100)}%`);
+			this._monthLabel.set_text(ratioText);
 			this._monthLabel.set_style(`color: ${this.barColor}; font-weight: 600; margin-right: 6px;`);
 		}
 		this._monthBar.visible = showMonth;
