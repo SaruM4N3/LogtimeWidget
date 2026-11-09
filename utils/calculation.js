@@ -256,9 +256,14 @@ function formatDuration(ms, showMinutes) {
     return showMinutes ? `${hours}h${String(minutes).padStart(2, '0')}` : `${hours}h`;
 }
 
-function formatTimeDisplay(stats, showMinutes = true, displayFormat = 'ratio', showCurrentDay = false, birthDate = '', showMoney = false) {
+// Done / needed hours, e.g. 50h47/84h
+function formatRatio(stats, showMinutes = true) {
     let todoText = stats.todoMs % HOUR_MS === 0 ? `${stats.todoMs / HOUR_MS}h` : formatDuration(stats.todoMs, true);
-    let ratioText = `${formatDuration(stats.doneMs, showMinutes)}/${todoText}`;
+    return `${formatDuration(stats.doneMs, showMinutes)}/${todoText}`;
+}
+
+function formatTimeDisplay(stats, showMinutes = true, displayFormat = 'ratio', showCurrentDay = false, birthDate = '', showMoney = false) {
+    let ratioText = formatRatio(stats, showMinutes);
 
     let remainingMs = stats.todoMs - stats.rawDoneMs;
     let remainingText = remainingMs < 0
@@ -286,6 +291,7 @@ var Calculation = {
     calculateStats,
     getBadgeStatus,
     formatDuration,
+    formatRatio,
     calculateMoney,
     getMonthlyRate,
     formatTimeDisplay,

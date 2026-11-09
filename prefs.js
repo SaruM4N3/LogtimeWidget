@@ -80,7 +80,7 @@ function fillPreferencesWindow(window) {
 
     const showMinutesRow = new Adw.ActionRow({
         title: 'Show Minutes',
-        subtitle: 'Display minutes in the panel label',
+        subtitle: 'Display minutes in the panel label and next to the month bar',
     });
 
     const showMinutesSwitch = new Gtk.Switch({
@@ -205,7 +205,6 @@ function fillPreferencesWindow(window) {
         let mode = displayModeType[displayModeCombo.get_selected()];
         let showText = mode !== 'bar';
 
-        showMinutesRow.visible = showText;
         showCurrentDayRow.visible = showText;
         gratifGroup.visible = showText;
 
@@ -473,7 +472,7 @@ function fillPreferencesWindow(window) {
         return button;
     }
 
-    const barColorButton = addColorRow('Main Bar', 'Month progress bar and its percentage',
+    const barColorButton = addColorRow('Main Bar', 'Month progress bar and its done/needed hours',
         saved.barColor || DEFAULT_BAR_COLOR);
     const badgeColorButton = addColorRow('Badge Bar', 'Time left before your next badge',
         saved.badgeColor || DEFAULT_BADGE_COLOR);

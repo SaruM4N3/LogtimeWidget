@@ -6,7 +6,7 @@ A GNOME Shell extension that shows your monthly logtime from [attendance.42lyon.
 
 ![Preview](screenshots/preview.gif)
 
-*Month progress (62%) and time left before the next badge (3h10).*
+*Month progress and time left before the next badge (3h10).*
 
 ## Installation
 
@@ -79,7 +79,7 @@ The bars are picked by the display format:
 
 | Format | Bar |
 |--------|-----|
-| **Current / Needed** | Month progress, with the attendance percentage next to it |
+| **Current / Needed** | Month progress, with the done/needed hours next to it (e.g. `50h47/84h`) |
 | **Remaining Hours** | Time before your next badge: the session expires 4h after the last clock-in and unsaved time is lost |
 | **Combined** | Both |
 
