@@ -178,10 +178,13 @@ chmod +x uninstall.sh
 ./uninstall.sh
 ```
 
+It asks whether to also delete your settings and attendance session (`~/.local/share/LogtimeWidget`). Use `./uninstall.sh --purge` to delete them without asking.
+
 Or manually:
 ```
 gnome-extensions disable soft-brightness@fifi.org
 rm -rf ~/.local/share/gnome-shell/extensions/soft-brightness@fifi.org
+rm -rf ~/.local/share/LogtimeWidget   # settings & session
 ```
 
 ## Privacy & Security

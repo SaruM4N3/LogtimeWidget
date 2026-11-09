@@ -75,9 +75,9 @@ function dayAttendanceMs(dayStart, dayEnd, history, maxPingInterval, withLocatio
     }
 
     for (let p of history.presences || []) {
-        let started = toMs(p.startedAt);
+        let started = toMs(p.beginAt);
         let saved = toMs(p.savedAt);
-        let ended = toMs(p.endedAt);
+        let ended = toMs(p.endAt);
         let end = ended !== null ? ended : saved;
         let r = clip(started, end, dayStart, dayEnd);
         if (r) groups[1].ranges.push(r);
@@ -90,8 +90,8 @@ function dayAttendanceMs(dayStart, dayEnd, history, maxPingInterval, withLocatio
     }
 
     for (let l of history.locations || []) {
-        let started = toMs(l.startedAt);
-        let ended = l.endedAt ? toMs(l.endedAt) : now;
+        let started = toMs(l.beginAt);
+        let ended = l.endAt ? toMs(l.endAt) : now;
         let r = clip(started, ended, dayStart, dayEnd);
         if (r) groups[2].ranges.push(r);
     }
@@ -154,7 +154,8 @@ function compileStats(page, days, remunerationUser) {
 
     let baseWorkdays = 0, remuneratedWorkdays = 0, closureWorkdays = 0, userWorkdays = 0, excusedDays = 0, rawDoneMs = 0;
     for (let d of days) {
-        rawDoneMs += d.attendanceMs;
+        // Time done on excused days (internship, absence) doesn't count
+        if (!d.excused) rawDoneMs += d.attendanceMs;
         if (!d.isWorkday) continue;
         let remunerated = isRemunerated(d.key);
         baseWorkdays++;
@@ -210,8 +211,8 @@ function calculateStats(page, now = Date.now()) {
 // (maxPingInterval) runs from savedAt, and unsaved time is lost if nobody badges before
 function getBadgeStatus(page, now = Date.now()) {
     let open = (page.history.presences || [])
-        .filter((p) => !p.endedAt && !p.closedAt)
-        .sort((a, b) => toMs(b.startedAt) - toMs(a.startedAt))[0];
+        .filter((p) => !p.endAt)
+        .sort((a, b) => toMs(b.beginAt) - toMs(a.beginAt))[0];
     if (!open) return { active: false, remainingMs: 0, ttlMs: page.user.maxPingInterval || 0 };
 
     let saved = toMs(open.savedAt);
