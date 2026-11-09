@@ -178,7 +178,9 @@ chmod +x uninstall.sh
 ./uninstall.sh
 ```
 
-It asks whether to also delete your settings and attendance session (`~/.local/share/LogtimeWidget`). Use `./uninstall.sh --purge` to delete them without asking.
+It asks whether to also delete your settings and attendance session (`~/.local/share/LogtimeWidget`). Use `./uninstall.sh --purge` to delete them, or `--keep` to keep them, without asking.
+
+You can also uninstall from Settings: **Uninstall** at the bottom of the page.
 
 Or manually:
 ```

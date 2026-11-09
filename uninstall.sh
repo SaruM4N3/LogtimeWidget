@@ -1,7 +1,8 @@
 #!/bin/bash
 
 # Logtime Widget GNOME Extension Uninstaller
-# Usage: ./uninstall.sh [--purge]   (--purge also deletes settings and session without asking)
+# Usage: ./uninstall.sh [--purge | --keep]
+# --purge deletes settings and session, --keep keeps them, otherwise it asks
 
 set -e
 
@@ -33,6 +34,8 @@ done
 if [ -d "$DATA_DIR" ]; then
     if [ "$1" = "--purge" ]; then
         answer=y
+    elif [ "$1" = "--keep" ]; then
+        answer=n
     else
         read -r -p "Also delete your settings and attendance session ($DATA_DIR)? [y/N] " answer
     fi

@@ -28,6 +28,43 @@ function rgbaToHex(rgba) {
 function init() {
 }
 
+// Asks for confirmation, then runs uninstall.sh (which disables the extension and
+// deletes its folder) and closes Settings
+function confirmUninstall(window) {
+    const dialog = new Gtk.MessageDialog({
+        transient_for: window,
+        modal: true,
+        message_type: Gtk.MessageType.WARNING,
+        text: 'Uninstall Logtime Widget?',
+        secondary_text: 'The widget will be removed from the panel.',
+    });
+    dialog.add_button('Cancel', Gtk.ResponseType.CANCEL);
+    dialog.add_button('Uninstall', Gtk.ResponseType.ACCEPT)
+        .add_css_class('destructive-action');
+
+    const purgeCheck = new Gtk.CheckButton({
+        label: 'Also delete my settings and attendance session',
+    });
+    dialog.get_message_area().append(purgeCheck);
+
+    dialog.connect('response', (_dialog, response) => {
+        let purge = purgeCheck.active;
+        dialog.destroy();
+        if (response !== Gtk.ResponseType.ACCEPT) return;
+
+        try {
+            let proc = Gio.Subprocess.new(
+                ['bash', `${Me.path}/uninstall.sh`, purge ? '--purge' : '--keep'],
+                Gio.SubprocessFlags.NONE
+            );
+            proc.wait_async(null, () => window.close());
+        } catch (e) {
+            Debug.logError(`Failed to uninstall: ${e.message}`);
+        }
+    });
+    dialog.show();
+}
+
 function fillPreferencesWindow(window) {
     let saved = MyStorage.loadSettings();
 
@@ -636,6 +673,26 @@ function fillPreferencesWindow(window) {
     logsRow.add_suffix(openLogsButton);
     logsRow.activatable_widget = openLogsButton;
     infoGroup.add(logsRow);
+
+    // ===== Uninstall Group =====
+    const uninstallGroup = new Adw.PreferencesGroup({
+        title: 'Uninstall',
+    });
+    page.add(uninstallGroup);
+
+    const uninstallRow = new Adw.ActionRow({
+        title: 'Uninstall Logtime Widget',
+        subtitle: 'Removes the extension from GNOME Shell',
+    });
+    const uninstallButton = new Gtk.Button({
+        label: 'Uninstall',
+        valign: Gtk.Align.CENTER,
+        css_classes: ['destructive-action'],
+    });
+    uninstallButton.connect('clicked', () => confirmUninstall(window));
+    uninstallRow.add_suffix(uninstallButton);
+    uninstallRow.activatable_widget = uninstallButton;
+    uninstallGroup.add(uninstallRow);
 
     // ===== Credits Group =====
     const creditsGroup = new Adw.PreferencesGroup({
